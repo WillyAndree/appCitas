@@ -1,9 +1,12 @@
 import 'package:flutter/material.dart';
-import 'package:prycitas/view/citasList.dart';
 import 'package:prycitas/view/loginpage.dart';
-import 'package:prycitas/view/menu_principal.dart';
+import 'package:intl/date_symbol_data_local.dart';
+import 'package:intl/intl.dart';
 
-void main() {
+void main() async{
+  WidgetsFlutterBinding.ensureInitialized();
+  await initializeDateFormatting('es_ES', null); // Cargar localización
+  Intl.defaultLocale = 'es_ES';
   runApp(const MyApp());
 }
 

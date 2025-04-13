@@ -49,28 +49,39 @@ class _AppointmentListScreenState extends State<AppointmentListScreen> {
       showDialog(
         context: context,
         builder: (BuildContext context) {
-          int selectedMonth = DateTime.now().month;
+          int currentYear = DateTime.now().year;
+          int currentMonth = DateTime.now().month;
+
           return AlertDialog(
             title: Text("Selecciona un mes"),
-            content: SizedBox(
-              height: 200,
-              child: ListView.builder(
-                itemCount: 50,
-                itemBuilder: (context, index) {
-                  int year = DateTime.now().year - index;
-                  return ListTile(
-                    title: Text(year.toString()),
-                    onTap: () {
-                      setState(() {
-                        selectedDate = DateTime(year);
-                      });
-                      Navigator.pop(context);
-                    },
-                  );
-                },
+            content: Container(
+              width: double.maxFinite,
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Expanded(
+                    child: ListView.builder(
+                      shrinkWrap: true,
+                      itemCount: 12, // Solo 12 meses
+                      itemBuilder: (context, index) {
+                        int month = index + 1; // Mes en el rango 1-12
+                        return ListTile(
+                          title: Text(
+                            DateFormat('MMMM', 'es_ES').format(DateTime(currentYear, month)),
+                          ),
+                          onTap: () {
+                            setState(() {
+                              selectedDate = DateTime(currentYear, month);
+                            });
+                            Navigator.pop(context);
+                          },
+                        );
+                      },
+                    ),
+                  ),
+                ],
               ),
             ),
-
           );
         },
       );
@@ -81,22 +92,30 @@ class _AppointmentListScreenState extends State<AppointmentListScreen> {
           int selectedYear = DateTime.now().year;
           return AlertDialog(
             title: Text("Selecciona un año"),
-            content: SizedBox(
-              height: 200,
-              child: ListView.builder(
-                itemCount: 50,
-                itemBuilder: (context, index) {
-                  int year = DateTime.now().year - index;
-                  return ListTile(
-                    title: Text(year.toString()),
-                    onTap: () {
-                      setState(() {
-                        selectedDate = DateTime(year);
-                      });
-                      Navigator.pop(context);
-                    },
-                  );
-                },
+            content: Container(
+              width: double.maxFinite,
+              child: Column(
+                mainAxisSize: MainAxisSize.min, // Permite que el diálogo solo ocupe el espacio necesario
+                children: [
+                  Expanded(
+                    child: ListView.builder(
+                      shrinkWrap: true,
+                      itemCount: 50,
+                      itemBuilder: (context, index) {
+                        int year = DateTime.now().year - index;
+                        return ListTile(
+                          title: Text(year.toString()),
+                          onTap: () {
+                            setState(() {
+                              selectedDate = DateTime(year);
+                            });
+                            Navigator.pop(context);
+                          },
+                        );
+                      },
+                    ),
+                  ),
+                ],
               ),
             ),
           );
