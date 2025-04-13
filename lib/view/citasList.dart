@@ -1,8 +1,12 @@
+import 'dart:convert';
+
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/widgets.dart';
 import 'package:intl/intl.dart';
+import 'package:http/http.dart' as http;
 import 'package:flip_card/flip_card.dart';
+import 'package:prycitas/constants.dart';
 import 'package:prycitas/view/citas_register.dart';
 
 
@@ -118,6 +122,37 @@ class _AppointmentListScreenState extends State<AppointmentListScreen> {
         },
       );
     }
+    await fetchCitas(selectedDate!.day.toString(),selectedDate!.month.toString(),selectedDate!.year.toString() );
+  }
+
+  Future<List?> fetchCitas( String dia, String mes, String anio) async {
+
+
+    List citas = [];
+
+    try {
+      final response = await http.post(Uri.parse("$url_base/citas.listar.php"),body:{
+        "dia":dia, "mes":mes, "anio":anio
+      });
+
+      if (response.statusCode == 200) {
+        final Map<String, dynamic> rptaJson = json.decode(response.body);
+        var citasJson = rptaJson["datos"] ?? [];
+        citas.add(citasJson);
+        return citas;
+      } else {
+       ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Error al obtener citas.')),
+        );
+        return [];
+      }
+    } catch (e) {
+      Navigator.of(context).pop();
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Error: $e')),
+      );
+      return [];
+    }
   }
 
   @override
@@ -165,23 +200,34 @@ class _AppointmentListScreenState extends State<AppointmentListScreen> {
           margin: EdgeInsets.symmetric(horizontal: 15),
           padding: const EdgeInsets.all(8.0),
         child: TextField(
-            decoration: InputDecoration(
+            decoration: const InputDecoration(
               labelText: "Buscar cliente o trabajador",
               labelStyle: TextStyle( color: Colors.blue,),
               prefixIcon: Icon(Icons.search),
               border: OutlineInputBorder(),
-              enabledBorder: const OutlineInputBorder(
-                borderSide: const BorderSide(color: Colors.grey, width: 0.0),
+              enabledBorder:  OutlineInputBorder(
+                borderSide:  BorderSide(color: Colors.grey, width: 0.0),
               ),
-             focusedBorder: const OutlineInputBorder(
-              borderSide: const BorderSide(color: Colors.grey, width: 0.0),
+             focusedBorder:  OutlineInputBorder(
+              borderSide:  BorderSide(color: Colors.grey, width: 0.0),
                 ),
             ),
 
-            onChanged: (value) {
+            onChanged: (value) async{
+              DateTime now = DateTime.now();
               setState(() {
                 searchQuery = value;
+
               });
+              if( selectedDate == null){
+                print("dia: ${now.day.toString()}, mes: ${now.month.toString()}, anio: ${now.year.toString()}, cliente: $value, trabajador: $value ");
+
+
+              }else{
+                print("dia: ${selectedDate!.day.toString()}, mes: ${selectedDate!.month.toString()}, anio: ${selectedDate!.year.toString()}, cliente: $value, trabajador: $value ");
+
+              }
+             // await fetchCitas(selectedDate!.day.toString(),selectedDate!.month.toString(),selectedDate!.year.toString(),value,value );
             },
           ),),
         Container(
