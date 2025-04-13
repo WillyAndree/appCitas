@@ -71,7 +71,7 @@ class _AppointmentListScreenState extends State<AppointmentListScreen> {
                             });
                             Navigator.pop(context);
                           },
-                        );
+                        );git
                       },
                     ),
                   ),
