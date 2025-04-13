@@ -1,8 +1,10 @@
 
+import 'dart:convert';
+
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'dart:typed_data';
-
+import 'package:http/http.dart' as http;
+import 'package:prycitas/constants.dart';
 import 'package:prycitas/view/menu_principal.dart';
 class LoginPage extends StatefulWidget {
   @override
@@ -51,8 +53,83 @@ class _LoginPageState extends State<LoginPage> with SingleTickerProviderStateMix
     }
   }
 
+  Future<List?> fetchAndStoreUsers(BuildContext context, String login, String clave) async {
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (BuildContext context) {
+        return const AlertDialog(
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              CircularProgressIndicator(),
+              SizedBox(height: 16),
+              Text('Cargando usuarios...'),
+            ],
+          ),
+        );
+      },
+    );
+
+    List users = [];
+
+    try {
+      final response = await http.post(Uri.parse("$url_base/sesion.iniciar.controlador.php"),body:{
+        "txtusuario":login, "txtclave":clave
+      });
+
+      if (response.statusCode == 200) {
+        final Map<String, dynamic> rptaJson = json.decode(response.body);
+        var userssJson = rptaJson["datos"] ?? [];
+
+        if ( userssJson.isEmpty) {
+          Navigator.of(context).pop();
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('No se encontraron usuarios en la API.')),
+          );
+
+          return [];
+        }
+
+
+        Navigator.of(context).pop();
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Sesión iniciada correctamente. ')),
+
+        );
+
+        users.add(userssJson);
+        return users;
+      } else {
+        Navigator.of(context).pop();
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Error al obtener usuarios desde la API.')),
+        );
+        return [];
+      }
+    } catch (e) {
+      Navigator.of(context).pop();
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Error: $e')),
+      );
+      return [];
+    }
+  }
+
   Future<void> loginSearch(String login, String password) async {
-    _login();
+    final datos = await fetchAndStoreUsers(context,login, password);
+
+    if (datos!.isNotEmpty) { // Validamos si se encontró el usuario
+      setState(() {
+        idusuario_capturado = datos[0]["codigo"].toString();
+      });
+
+      _login();
+    } else {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Credenciales Incorrectas. Revísalas y vuelve a intentar')),
+      );
+    }
   }
 
 

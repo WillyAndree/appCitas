@@ -17,22 +17,22 @@ class _ClientListScreenState extends State<ClientListScreen> {
       appBar: AppBar(
         foregroundColor: Colors.white,
         backgroundColor: Colors.blue,
-          title: Text("Listado de Clientes")),
+          title: const Text("Listado de Clientes")),
       body: Column(
         children: [
           Padding(
-            padding: EdgeInsets.all(10),
+            padding: const EdgeInsets.all(10),
             child: TextField(
-              decoration: InputDecoration(
+              decoration: const InputDecoration(
                 labelText: "Buscar Cliente",
                 prefixIcon: Icon(Icons.search),
                 border: OutlineInputBorder(),
                 labelStyle: TextStyle( color: Colors.blue,),
-                enabledBorder: const OutlineInputBorder(
-                  borderSide: const BorderSide(color: Colors.grey, width: 0.0),
+                enabledBorder:  OutlineInputBorder(
+                  borderSide:  BorderSide(color: Colors.grey, width: 0.0),
                 ),
-                focusedBorder: const OutlineInputBorder(
-                  borderSide: const BorderSide(color: Colors.grey, width: 0.0),
+                focusedBorder:  OutlineInputBorder(
+                  borderSide:  BorderSide(color: Colors.grey, width: 0.0),
 
                 ),
               ),
