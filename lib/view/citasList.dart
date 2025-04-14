@@ -17,10 +17,10 @@ class AppointmentListScreen extends StatefulWidget {
 }
 
 class _AppointmentListScreenState extends State<AppointmentListScreen> {
-  final List<Appointment> appointments = [
+  final List<Appointment> appointments = [/*
     Appointment("Juan Pérez", DateTime.now().add(Duration(minutes: 15)), "Limpieza profunda", "Dr. Pérez"),
     Appointment("Ana López", DateTime.now().add(Duration(hours: 1)), "Tratamiento para hongos", "Dra. Gómez"),
-    Appointment("Carlos Sánchez", DateTime.now().add(Duration(hours: 2)), "Extracción de callosidades", "Dr. Ramírez"),
+    Appointment("Carlos Sánchez", DateTime.now().add(Duration(hours: 2)), "Extracción de callosidades", "Dr. Ramírez"),*/
   ];
   String selectedDateFilter = "Día";
   String? selectedClient;
@@ -75,7 +75,7 @@ class _AppointmentListScreenState extends State<AppointmentListScreen> {
                             });
                             Navigator.pop(context);
                           },
-                        );git
+                        );
                       },
                     ),
                   ),
@@ -125,10 +125,10 @@ class _AppointmentListScreenState extends State<AppointmentListScreen> {
     await fetchCitas(selectedDate!.day.toString(),selectedDate!.month.toString(),selectedDate!.year.toString() );
   }
 
-  Future<List?> fetchCitas( String dia, String mes, String anio) async {
+  Future<void> fetchCitas( String dia, String mes, String anio) async {
 
 
-    List citas = [];
+    //List citas = [];
 
     try {
       final response = await http.post(Uri.parse("$url_base/citas.listar.php"),body:{
@@ -138,20 +138,29 @@ class _AppointmentListScreenState extends State<AppointmentListScreen> {
       if (response.statusCode == 200) {
         final Map<String, dynamic> rptaJson = json.decode(response.body);
         var citasJson = rptaJson["datos"] ?? [];
-        citas.add(citasJson);
-        return citas;
+        if ( citasJson.isEmpty) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('No se encontraron citas.')),
+          );
+          return;
+        }
+        setState(() {
+          appointments.add(citasJson);
+        });
+
+        //return appointments;
       } else {
        ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(content: Text('Error al obtener citas.')),
         );
-        return [];
+       // return [];
       }
     } catch (e) {
       Navigator.of(context).pop();
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text('Error: $e')),
       );
-      return [];
+     // return [];
     }
   }
 
