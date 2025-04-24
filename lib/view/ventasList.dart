@@ -1,4 +1,8 @@
+import 'dart:convert';
+
 import 'package:flutter/material.dart';
+import 'package:http/http.dart' as http;
+import 'package:prycitas/constants.dart';
 
 class SalesListScreen extends StatefulWidget {
   @override
@@ -6,33 +10,78 @@ class SalesListScreen extends StatefulWidget {
 }
 
 class _SalesListScreenState extends State<SalesListScreen> {
-  final List<Map<String, dynamic>> sales = [
-    {
-      "total": 150.00,
-      "cliente": "Juan Pérez",
-      "tipoDocumento": "Boleta",
-      "numero": "B001-000123",
-      "productos": [
-        {"nombre": "Crema para pies", "cantidad": 2, "precio":120},
-        {"nombre": "Lima eléctrica", "cantidad": 1, "precio":30}
-      ],
-      "metodoPago": "Efectivo"
-    },
-    {
-      "total": 230.00,
-      "cliente": "María López",
-      "tipoDocumento": "Boleta",
-      "numero": "B001-000124",
-      "productos": [
-        {"nombre": "Exfoliante", "cantidad": 3, "precio": 230}
-      ],
-      "metodoPago": "Tarjeta"
-    }
-  ];
+
+
+  List<Map<String, dynamic>> sales = [];
 
   String searchQuery = "";
   DateTime? selectedDate;
 
+  Future<void> fetchVentas(String nombres,String fecha, String sucursal) async {
+    try {
+      final response = await http.post(Uri.parse("$url_base/venta.listar.php"), body: {
+        "nombres":nombres,"fecha":fecha, "sucursal":sucursal
+      });
+
+      if (response.statusCode == 200) {
+        final Map<String, dynamic> rptaJson = json.decode(response.body);
+        var sellJson = rptaJson["datos"] ?? [];
+        if ( sellJson.isEmpty) {
+          setState((){
+            sales.clear();
+          });
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('No se encontraron ventas.')),
+          );
+          return;
+        }else{
+         /* setState((){
+            sales.clear();
+          });*/
+
+
+          for(int i = 0; i <sellJson.length; i++){
+            setState(() {
+              sales.add( {
+                "total": double.parse(sellJson[i]["total"]),
+                "cliente": sellJson[i]["cliente"],
+                "tipoDocumento": sellJson[i]["tipo"],
+                "numero": sellJson[i]["nro_documento"],
+                "productos": [
+                  {"nombre": "Crema para pies", "cantidad": 2, "precio":120},
+                  {"nombre": "Lima eléctrica", "cantidad": 1, "precio":30}
+                ],
+                "metodoPago": sellJson[i]["metodoPago"]
+              });
+            });
+          }
+        }
+
+      } else {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Error al obtener ventas.')),
+        );
+        // return [];
+      }
+    } catch (e) {
+      Navigator.of(context).pop();
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Error: $e')),
+      );
+      // return [];
+    }
+  }
+
+  @override
+  void initState() {
+    // TODO: implement initState
+    super.initState();
+
+    WidgetsBinding.instance.addPostFrameCallback((_){
+      DateTime actual = DateTime.now();
+      fetchVentas("","${actual.year}-${actual.month}-${actual.day}","3");
+    });
+  }
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -73,6 +122,14 @@ class _SalesListScreenState extends State<SalesListScreen> {
                       setState(() {
                         selectedDate = pickedDate;
                       });
+                      String fecha_seleccionada = DateTime.parse(
+                          "${selectedDate!.year.toString().padLeft(4, '0')}-"
+                              "${selectedDate!.month.toString().padLeft(2, '0')}-"
+                              "${selectedDate!.day.toString().padLeft(2, '0')}"
+                      ).toString();
+                      print(fecha_seleccionada.substring(0,10));
+                      fetchVentas("",fecha_seleccionada.substring(0,10),"3");
+
                     }
                   },
                 )

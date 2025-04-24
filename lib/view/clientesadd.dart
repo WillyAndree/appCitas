@@ -1,5 +1,10 @@
+import 'dart:convert';
+
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
+import 'package:prycitas/constants.dart';
+import 'package:http/http.dart' as http;
+import 'package:prycitas/view/clientesList.dart';
 
 class AddClientScreen extends StatefulWidget {
   @override
@@ -12,6 +17,52 @@ class _AddClientScreenState extends State<AddClientScreen> {
   final TextEditingController addressController = TextEditingController();
   final TextEditingController celController = TextEditingController();
   DateTime? birthDate;
+
+
+  Future<void> registerCitas(String nombres, String dni, String fecha_nacimiento, String celular,String direccion) async {
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (BuildContext context) {
+        return const AlertDialog(
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              CircularProgressIndicator(),
+              SizedBox(height: 16),
+              Text('Registrando cliente...'),
+            ],
+          ),
+        );
+      },
+    );
+    try {
+      final response = await http.post(Uri.parse("$url_base/clientes.agregar.app.php"), body: {
+        "nombres":nombres, "dni":dni, "fecha_nacimiento": fecha_nacimiento, "celular":celular, "direccion":direccion
+      });
+
+      if (response.statusCode == 200) {
+        final Map<String, dynamic> rptaJson = json.decode(response.body);
+        var rptJson = rptaJson["datos"] ?? [];
+
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Cliente registrado correctamente.')),
+        );
+      } else {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Error al registrar cliente.')),
+        );
+      }
+    } catch (e) {
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Error: $e')),
+      );
+      // return [];
+    }
+    Navigator.pop(context);
+  }
+
 
   @override
   Widget build(BuildContext context) {
@@ -66,8 +117,13 @@ class _AddClientScreenState extends State<AddClientScreen> {
             SizedBox(height: 20),
             ElevatedButton(
               style: ElevatedButton.styleFrom(backgroundColor: Colors.blue[300]),
-              onPressed: () {
+              onPressed: () async{
+                await registerCitas(nameController.text,  dniController.text, DateFormat("yyyy-MM-dd").format(birthDate!), celController.text, addressController.text);
                 Navigator.pop(context);
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(builder: (context) => ClientListScreen()),
+                );
               },
               child: Text("Guardar cliente", style: TextStyle(color: Colors.white),),
             ),

@@ -1,5 +1,8 @@
-import 'package:flutter/material.dart';
+import 'dart:convert';
 
+import 'package:flutter/material.dart';
+import 'package:http/http.dart' as http;
+import 'package:prycitas/constants.dart';
 import 'clientesadd.dart';
 
 class ClientListScreen extends StatefulWidget {
@@ -8,9 +11,63 @@ class ClientListScreen extends StatefulWidget {
 }
 
 class _ClientListScreenState extends State<ClientListScreen> {
-  final List<String> clients = ["Juan Pérez", "Ana López", "Carlos Sánchez"];
+  final List clients = [];
   String searchQuery = "";
 
+  Future<void> fetchClientes(String cliente) async {
+    try {
+      final response = await http.post(Uri.parse("$url_base/cliente.listar.nombres.php"), body: {
+        "nombres":cliente
+      });
+
+      if (response.statusCode == 200) {
+        final Map<String, dynamic> rptaJson = json.decode(response.body);
+        var clientesJson = rptaJson["datos"] ?? [];
+        if ( clientesJson.isEmpty) {
+          setState((){
+            clients.clear();
+          });
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('No se encontraron clientes.')),
+          );
+          return;
+        }else{
+          setState((){
+            clients.clear();
+          });
+
+
+          for(int i = 0; i <clientesJson.length; i++){
+            setState(() {
+              clients.add({
+                "codigo":clientesJson[i]["codigo"],
+                "nombres":clientesJson[i]["nombres"]
+              });
+            });
+          }
+        }
+
+      } else {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Error al obtener clientes.')),
+        );
+        // return [];
+      }
+    } catch (e) {
+      Navigator.of(context).pop();
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Error: $e')),
+      );
+      // return [];
+    }
+  }
+
+  @override
+  void initState() {
+    // TODO: implement initState
+    super.initState();
+    fetchClientes("");
+  }
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -46,8 +103,11 @@ class _ClientListScreenState extends State<ClientListScreen> {
           Expanded(
             child: ListView(
               children: clients
-                  .where((client) => client.toLowerCase().contains(searchQuery))
-                  .map((client) => ListTile(title: Text(client)))
+                  .where((client) => client["nombres"].toLowerCase().contains(searchQuery))
+                  .map((client) => ListTile(
+                title: Text(client["nombres"]),
+                //subtitle: Text("Código: ${client["codigo"]}"),
+              ))
                   .toList(),
             ),
           ),
@@ -56,6 +116,7 @@ class _ClientListScreenState extends State<ClientListScreen> {
       floatingActionButton: FloatingActionButton(
         backgroundColor: Colors.blueAccent,
         onPressed: () {
+          Navigator.pop(context);
           Navigator.push(
             context,
             MaterialPageRoute(builder: (context) => AddClientScreen()),

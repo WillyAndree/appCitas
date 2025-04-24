@@ -1,5 +1,9 @@
+import 'dart:convert';
+
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
+import 'package:http/http.dart' as http;
+import 'package:prycitas/constants.dart';
 
 class CashboxScreen extends StatefulWidget {
   @override
@@ -7,15 +11,60 @@ class CashboxScreen extends StatefulWidget {
 }
 
 class _CashboxScreenState extends State<CashboxScreen> {
-  final Map<String, double> payments = {
-    "Caja inicial": 100.0,
-    "Efectivo": 1500.0,
-    "Tarjeta": 1200.0,
-    "Yape": 800.0,
-    "Plin": 600.0,
-    "Transferencia": 950.0,
-    "Efectivo en caja": 1600.0,
-  };
+   Map<String, double> payments = {};
+
+  Future<void> fetchCaja(String fecha, String sucursal) async {
+    try {
+      final response = await http.post(Uri.parse("$url_base/caja.montos.listar.php"), body: {
+        "fecha":fecha, "sucursal":sucursal
+      });
+
+      if (response.statusCode == 200) {
+        final Map<String, dynamic> rptaJson = json.decode(response.body);
+        var paymentJson = rptaJson["datos"] ?? [];
+        if ( paymentJson.isEmpty) {
+          setState((){
+            payments.clear();
+          });
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('No se encontraron productos.')),
+          );
+          return;
+        }else{
+          setState((){
+            payments.clear();
+          });
+
+
+          for(int i = 0; i <paymentJson.length; i++){
+            setState(() {
+              payments = {
+                "Caja inicial": double.parse(paymentJson[i]["monto_inicial"]),
+                "Efectivo": double.parse(paymentJson[i]["ventas_efectivo"]),
+                "Tarjeta": double.parse(paymentJson[i]["ventas_tarjeta"]),
+                "Yape": double.parse(paymentJson[i]["credito"]),
+                "Plin": double.parse(paymentJson[i]["plim"]),
+                "Transferencia": 0.00,
+                "Efectivo en caja": double.parse(paymentJson[i]["efectivo_caja"]),
+              };
+            });
+          }
+        }
+
+      } else {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Error al obtener productos.')),
+        );
+        // return [];
+      }
+    } catch (e) {
+      Navigator.of(context).pop();
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Error: $e')),
+      );
+      // return [];
+    }
+  }
 
   final List<Color> colors = [
     Colors.blueGrey,
@@ -28,6 +77,16 @@ class _CashboxScreenState extends State<CashboxScreen> {
   ];
 
   DateTime selectedDate = DateTime.now();
+
+  @override
+  void initState() {
+    // TODO: implement initState
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_){
+      DateTime actual = DateTime.now();
+      fetchCaja("${actual.year}-${actual.month}-${actual.day}", "3" );
+    });
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -63,6 +122,7 @@ class _CashboxScreenState extends State<CashboxScreen> {
                   setState(() {
                     selectedDate = pickedDate;
                   });
+                  await fetchCaja("${selectedDate.year}-${selectedDate.month}-${selectedDate.day}", "3" );
                 }
               },
             ),

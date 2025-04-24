@@ -1,5 +1,9 @@
-import 'package:flutter/material.dart';
+import 'dart:convert';
 
+import 'package:flutter/material.dart';
+import 'package:http/http.dart' as http;
+import 'package:prycitas/constants.dart';
+import 'package:prycitas/view/cart_register.dart';
 
 class ProductListScreen extends StatefulWidget {
   @override
@@ -7,15 +11,68 @@ class ProductListScreen extends StatefulWidget {
 }
 
 class _ProductListScreenState extends State<ProductListScreen> {
-  final List<Map<String, dynamic>> products = [
-    {"name": "Crema Hidratante", "price": 25.0, "stock": 15},
-    {"name": "Alcohol en Gel", "price": 10.0, "stock": 30},
-    {"name": "Lima de Uñas", "price": 5.0, "stock": 50},
-    {"name": "Antiséptico", "price": 18.0, "stock": 20},
-    {"name": "Parche Protector", "price": 12.0, "stock": 25},
-  ];
+  final List<Map<String, dynamic>> products = [];
 
   String searchQuery = "";
+  List products_cart = [];
+
+  Future<void> fetchProducts(String producto) async {
+    try {
+      final response = await http.post(Uri.parse("$url_base/producto.listar.nombres.php"), body: {
+        "nombres":producto
+      });
+
+      if (response.statusCode == 200) {
+        final Map<String, dynamic> rptaJson = json.decode(response.body);
+        var productsJson = rptaJson["datos"] ?? [];
+        if ( productsJson.isEmpty) {
+          setState((){
+            products.clear();
+          });
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('No se encontraron productos.')),
+          );
+          return;
+        }else{
+          setState((){
+            products.clear();
+          });
+
+
+          for(int i = 0; i <productsJson.length; i++){
+            setState(() {
+              products.add({
+                "codigo":productsJson[i]["codigo"],
+                "nombres":productsJson[i]["nombre"],
+                "stock":productsJson[i]["stock"],
+                "precio":productsJson[i]["precio"],
+                "estado":productsJson[i]["estado"]
+              });
+            });
+          }
+        }
+
+      } else {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Error al obtener productos.')),
+        );
+        // return [];
+      }
+    } catch (e) {
+      Navigator.of(context).pop();
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Error: $e')),
+      );
+      // return [];
+    }
+  }
+
+  @override
+  void initState() {
+    // TODO: implement initState
+    super.initState();
+    fetchProducts("");
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -23,6 +80,21 @@ class _ProductListScreenState extends State<ProductListScreen> {
       appBar: AppBar(
         backgroundColor: Colors.blue,
           foregroundColor: Colors.white,
+          actions: [
+            IconButton(onPressed: () async{
+              final rpta = await Navigator.push(
+                context,
+                MaterialPageRoute(builder: (context) => CartRegister(productos: products_cart,)),
+              );
+              if(rpta != null){
+                setState(() {
+                  products_cart.clear();
+                });
+
+              }
+              //mostrarDialogoProductos(context,products_cart);
+            }, icon: Icon(products_cart.isNotEmpty ? Icons.shopping_cart_checkout : Icons.shopping_cart, color: products_cart.isNotEmpty ? Colors.red: Colors.white,))
+          ],
           title: Text("Productos")),
       body: Column(
         children: [
@@ -46,31 +118,53 @@ class _ProductListScreenState extends State<ProductListScreen> {
               itemCount: products.length,
               itemBuilder: (context, index) {
                 final product = products[index];
-                if (!product["name"].toLowerCase().contains(searchQuery)) {
+                if (!product["nombres"].toLowerCase().contains(searchQuery)) {
                   return Container();
                 }
                 return Card(
                   margin: EdgeInsets.symmetric(horizontal: 10, vertical: 5),
                   child: Column(children: [
                     ListTile(
-                      title: Text(product["name"], style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18)),
+                      title: Text(product["nombres"], style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18)),
                       subtitle: Text("Stock: ${product["stock"]}",style: TextStyle(fontSize: 16),),
-                      trailing: Text("S/ ${product["price"].toStringAsFixed(2)}", style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Colors.green)),
+                      trailing: Text("S/ ${product["precio"]}", style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Colors.green)),
                     ),
                     Container(
                       alignment: Alignment.centerRight,
-                        child:IconButton(onPressed: (){
-                          showDialog(
+                        child:IconButton(
+                            onPressed: () async{
+                              final respuesta = await _mostrarDialogoAgregarProducto(context, product["precio"]);
+                              if (respuesta != null) {
+                                setState(() {
+                                  products_cart.add({
+                                    "idproducto":product["codigo"],
+                                    "nombres":product["nombres"],
+                                    "cantidad":respuesta["cantidad"],
+                                    "precio":respuesta["precio"],
+                                    "detalle":respuesta["comentario"],
+                                    "medida":"UND",
+                                    "sucursal":"3",
+                                    "subtotal": (int.parse(respuesta["cantidad"].toString()) * double.parse(respuesta["precio"].toString())).toString(),
+                                    "ganancia": "0",
+                                  });
+                                });
+
+                              } else {
+                                print("El usuario canceló.");
+                              }
+
+                              print(products_cart.toString());
+                          /*showDialog(
                             context: context,
                             builder: (context) {
                               String selectedPaymentMethod = "Efectivo";
                               String selectedDocMethod = "Boleta Simple";
-                              String total = "${product["price"].toStringAsFixed(2)}";
+                              String total = "${product["precio"]}";
                               TextEditingController amountController = TextEditingController();
                               TextEditingController cantController = TextEditingController();
                               TextEditingController clientController = TextEditingController();
                               TextEditingController dniController = TextEditingController();
-                              amountController.text = "${product["price"].toStringAsFixed(2)}";
+                              amountController.text = "${product["precio"]}";
                               cantController.text = "1.0";
                               return AlertDialog(
                                 title: Text("Registrar Venta"),
@@ -179,7 +273,7 @@ class _ProductListScreenState extends State<ProductListScreen> {
                                 ],
                               );
                             },
-                          );
+                          );*/
                     }, icon: Icon(Icons.sell, color: Colors.blue,)) )
 
                   ],)
@@ -192,3 +286,65 @@ class _ProductListScreenState extends State<ProductListScreen> {
     );
   }
 }
+
+
+
+Future<Map<String, String>?> _mostrarDialogoAgregarProducto(BuildContext context, String precio) {
+  TextEditingController cantidadController = TextEditingController();
+  TextEditingController precioController = TextEditingController();
+  TextEditingController comentarioController = TextEditingController();
+
+  cantidadController.text = "0";
+  precioController.text = precio;
+
+  return showDialog<Map<String, String>>(
+    context: context,
+    builder: (BuildContext context) {
+      return AlertDialog(
+        title: Text("Agregar Producto"),
+        content: SingleChildScrollView(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              TextField(
+                controller: cantidadController,
+                keyboardType: TextInputType.number,
+                decoration: InputDecoration(labelText: "Cantidad"),
+              ),
+              TextField(
+                controller: precioController,
+                keyboardType: TextInputType.number,
+                decoration: InputDecoration(labelText: "Precio"),
+              ),
+              SizedBox(height: 10),
+              TextField(
+                controller: comentarioController,
+                maxLines: 2,
+                decoration: InputDecoration(labelText: "Comentario"),
+              ),
+            ],
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () {
+              Navigator.of(context).pop(); // Cancelar, retorna null
+            },
+            child: Text("Cancelar"),
+          ),
+          ElevatedButton(
+            onPressed: () {
+              Navigator.of(context).pop({
+                "cantidad": cantidadController.text,
+                "comentario": comentarioController.text,
+                "precio": precioController.text,
+              }); // Retorna un Map<String, String>
+            },
+            child: Text("Agregar"),
+          ),
+        ],
+      );
+    },
+  );
+}
+
