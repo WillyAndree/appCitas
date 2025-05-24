@@ -3,6 +3,7 @@ import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'package:prycitas/constants.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 class SalesListScreen extends StatefulWidget {
   @override
@@ -43,6 +44,7 @@ class _SalesListScreenState extends State<SalesListScreen> {
           for(int i = 0; i <sellJson.length; i++){
             setState(() {
               sales.add( {
+                "nro_venta": sellJson[i]["nro_venta"],
                 "total": double.parse(sellJson[i]["total"]),
                 "cliente": sellJson[i]["cliente"],
                 "tipoDocumento": sellJson[i]["tipo"],
@@ -72,6 +74,40 @@ class _SalesListScreenState extends State<SalesListScreen> {
     }
   }
 
+  Future<void> fetchImpresionPDF(String nro_venta) async {
+    try {
+      final response = await http.post(Uri.parse("$url_base/ticket.venta.php"), body: {
+        "nro_venta":nro_venta
+      });
+
+      if (response.statusCode == 200) {
+        _launchURL(nro_venta);
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Correcto')),
+        );
+      } else {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Error al obtener ventas.')),
+        );
+        // return [];
+      }
+    } catch (e) {
+      Navigator.of(context).pop();
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Error: $e')),
+      );
+      // return [];
+    }
+  }
+
+  Future<void> _launchURL(String nroVenta) async {
+    final Uri url = Uri.parse("http://vital.vlinesys.com/app/controlador/${nroVenta}venta.pdf");
+
+    if (!await launchUrl(url, mode: LaunchMode.externalApplication)) {
+      throw Exception('No se pudo abrir la URL: $url');
+    }
+  }
+
   @override
   void initState() {
     // TODO: implement initState
@@ -84,6 +120,9 @@ class _SalesListScreenState extends State<SalesListScreen> {
   }
   @override
   Widget build(BuildContext context) {
+    final filteredSales = sales.where((sale) {
+      return sale["cliente"].toString().toLowerCase().contains(searchQuery.toLowerCase());
+    }).toList();
     return Scaffold(
       appBar: AppBar(
         backgroundColor: Colors.blue,
@@ -138,9 +177,9 @@ class _SalesListScreenState extends State<SalesListScreen> {
           ),
           Expanded(
             child: ListView.builder(
-              itemCount: sales.length,
+              itemCount: filteredSales.length,
               itemBuilder: (context, index) {
-                var sale = sales[index];
+                var sale = filteredSales[index];
                 return Card(
                   margin: EdgeInsets.all(10),
                   child: ListTile(
@@ -157,8 +196,8 @@ class _SalesListScreenState extends State<SalesListScreen> {
                         ),
                         IconButton(
                           icon: Icon(Icons.print, color: Colors.blue),
-                          onPressed: () {
-                            // Acción para imprimir la venta
+                          onPressed: () async{
+                            await fetchImpresionPDF(sale["nro_venta"]);
                           },
                         ),
                       ],
@@ -191,7 +230,8 @@ class _SalesListScreenState extends State<SalesListScreen> {
                 );
               },
             ),
-          ),
+          )
+
         ],
       ),
     );
