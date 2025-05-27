@@ -30,7 +30,7 @@ class _RegisterAppointmentScreenState extends State<RegisterAppointmentScreen> {
   final List treatmentsall = [];
   final List<String> workers = [];
   final List workersall = [];
-  final List<String> availableTimes = ["09:00 AM", "10:00 AM", "11:00 AM", "02:00 PM", "03:00 PM", "04:00 PM"];
+  final List<String> availableTimes = ["08:00 AM","09:00 AM", "10:00 AM", "11:00 AM", "12:00 PM", "13:00 pM", "15:00 PM", "16:00 PM", "17:00 PM", "18:00 PM", "19:00 PM", "20:00 PM"];
   final List<String> occupiedTimes = [];
   final List clients = [];
   final List<String> clientsname = [];

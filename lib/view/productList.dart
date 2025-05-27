@@ -67,6 +67,118 @@ class _ProductListScreenState extends State<ProductListScreen> {
     }
   }
 
+  Future<void> registerProductos(String codigo, descripcion, precio, tipo, operacion) async {
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (BuildContext context) {
+        return const AlertDialog(
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              CircularProgressIndicator(),
+              SizedBox(height: 16),
+              Text('Registrando producto...'),
+            ],
+          ),
+        );
+      },
+    );
+    try {
+      final response = await http.post(Uri.parse("$url_base/agregar.productos.php"), body: {
+        "descripcion":descripcion, "precio":precio,  "tipo": tipo, "operacion": operacion, "codigo": codigo
+      });
+
+      if (response.statusCode == 200) {
+        final Map<String, dynamic> rptaJson = json.decode(response.body);
+        var rptJson = rptaJson["datos"] ?? [];
+
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Producto registrado correctamente.')),
+        );
+      } else {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Error al registrar producto.')),
+        );
+      }
+    } catch (e) {
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Error: $e')),
+      );
+      // return [];
+    }
+    Navigator.pop(context);
+  }
+
+  void _mostrarDialog(String codigo,String tipo,String descripcion, String precio) async {
+    TextEditingController nombreController = TextEditingController();
+    TextEditingController precioController = TextEditingController();
+    nombreController.text = descripcion;
+    precioController.text = precio;
+    String tipoSeleccionado = "Producto";
+
+    final resultado = await showDialog<Map<String, dynamic>>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: Text('${tipo} Producto o Servicio'),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            TextField(
+              controller: nombreController,
+              decoration: InputDecoration(labelText: 'Nombre o Descripción'),
+            ),
+            SizedBox(height: 10),
+            TextField(
+              controller: precioController,
+              keyboardType: TextInputType.numberWithOptions(decimal: true),
+              decoration: InputDecoration(labelText: 'Precio'),
+            ),
+            SizedBox(height: 10),
+            DropdownButton<String>(
+              value: tipoSeleccionado,
+              items: ['Producto', 'Servicio'].map((tipo) {
+                return DropdownMenuItem(
+                  value: tipo,
+                  child: Text(tipo),
+                );
+              }).toList(),
+              onChanged: (valor) {
+                setState(() {
+                  tipoSeleccionado = valor!;
+                });
+              },
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(), // Cancelar
+            child: Text('Cancelar'),
+          ),
+          ElevatedButton(
+            onPressed: () async{
+              /*final resultado = {
+                'nombre': nombreController.text,
+                'precio': precioController.text,
+                'tipo': tipoSeleccionado
+              };*/
+              await registerProductos( codigo,nombreController.text, precioController.text,tipoSeleccionado == "Servicio" ? "S": "P", tipo);
+              Navigator.of(context).pop();
+            },
+            child:  Text('$tipo'),
+          ),
+        ],
+      ),
+    );
+
+    if (resultado != null) {
+      print("Datos recibidos: $resultado");
+      // Puedes usar los datos aquí
+    }
+  }
+
   @override
   void initState() {
     // TODO: implement initState
@@ -96,6 +208,13 @@ class _ProductListScreenState extends State<ProductListScreen> {
             }, icon: Icon(products_cart.isNotEmpty ? Icons.shopping_cart_checkout : Icons.shopping_cart, color: products_cart.isNotEmpty ? Colors.red: Colors.white,))
           ],
           title: Text("Productos")),
+      floatingActionButton: FloatingActionButton(
+        backgroundColor: Colors.blueAccent,
+        onPressed: () {
+          _mostrarDialog("","Agregar", "", "");
+        },
+        child: Icon(Icons.add, color: Colors.white,),
+      ),
       body: Column(
         children: [
           Padding(
@@ -129,32 +248,35 @@ class _ProductListScreenState extends State<ProductListScreen> {
                       subtitle: Text("Stock: ${product["stock"]}",style: TextStyle(fontSize: 16),),
                       trailing: Text("S/ ${product["precio"]}", style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Colors.green)),
                     ),
-                    Container(
-                      alignment: Alignment.centerRight,
-                        child:IconButton(
-                            onPressed: () async{
-                              final respuesta = await _mostrarDialogoAgregarProducto(context, product["precio"]);
-                              if (respuesta != null) {
-                                setState(() {
-                                  products_cart.add({
-                                    "idproducto":product["codigo"],
-                                    "nombres":product["nombres"],
-                                    "cantidad":respuesta["cantidad"],
-                                    "precio":respuesta["precio"],
-                                    "detalle":respuesta["comentario"],
-                                    "medida":"UND",
-                                    "sucursal":"3",
-                                    "subtotal": (int.parse(respuesta["cantidad"].toString()) * double.parse(respuesta["precio"].toString())).toString(),
-                                    "ganancia": "0",
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.end,
+                      children: [
+                      Container(
+                          alignment: Alignment.centerRight,
+                          child:IconButton(
+                              onPressed: () async{
+                                final respuesta = await _mostrarDialogoAgregarProducto(context, product["precio"]);
+                                if (respuesta != null) {
+                                  setState(() {
+                                    products_cart.add({
+                                      "idproducto":product["codigo"],
+                                      "nombres":product["nombres"],
+                                      "cantidad":respuesta["cantidad"],
+                                      "precio":respuesta["precio"],
+                                      "detalle":respuesta["comentario"],
+                                      "medida":"UND",
+                                      "sucursal":"3",
+                                      "subtotal": (int.parse(respuesta["cantidad"].toString()) * double.parse(respuesta["precio"].toString())).toString(),
+                                      "ganancia": "0",
+                                    });
                                   });
-                                });
 
-                              } else {
-                                print("El usuario canceló.");
-                              }
+                                } else {
+                                  print("El usuario canceló.");
+                                }
 
-                              print(products_cart.toString());
-                          /*showDialog(
+                                print(products_cart.toString());
+                                /*showDialog(
                             context: context,
                             builder: (context) {
                               String selectedPaymentMethod = "Efectivo";
@@ -274,7 +396,21 @@ class _ProductListScreenState extends State<ProductListScreen> {
                               );
                             },
                           );*/
-                    }, icon: Icon(Icons.sell, color: Colors.blue,)) )
+                              }, icon: Icon(Icons.sell, color: Colors.blue,)) ),
+                      Container(
+                          alignment: Alignment.centerRight,
+                          child:IconButton(
+                              onPressed: () async{
+                                _mostrarDialog(product["codigo"],"Editar",product["nombres"],product["precio"]);
+                              }, icon: Icon(Icons.edit, color: Colors.blue,)) ),
+                        Container(
+                            alignment: Alignment.centerRight,
+                            child:IconButton(
+                                onPressed: () async{
+                                  registerProductos(product["codigo"], "Eliminar", "", "", "");
+                                }, icon: Icon(Icons.restore_from_trash, color: Colors.red,)) )
+                    ],)
+
 
                   ],)
                 );
