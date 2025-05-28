@@ -17,8 +17,24 @@ class _ProductListScreenState extends State<ProductListScreen> {
   List products_cart = [];
 
   Future<void> fetchProducts(String producto) async {
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (BuildContext context) {
+        return const AlertDialog(
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              CircularProgressIndicator(),
+              SizedBox(height: 16),
+              Text('Cargando productos...'),
+            ],
+          ),
+        );
+      },
+    );
     try {
-      final response = await http.post(Uri.parse("$url_base/producto.listar.nombres.php"), body: {
+      final response = await http.post(Uri.parse("$url_base/producto.listar.all.php"), body: {
         "nombres":producto
       });
 
@@ -65,6 +81,7 @@ class _ProductListScreenState extends State<ProductListScreen> {
       );
       // return [];
     }
+    Navigator.pop(context);
   }
 
   Future<void> registerProductos(String codigo, descripcion, precio, tipo, operacion) async {
@@ -78,7 +95,7 @@ class _ProductListScreenState extends State<ProductListScreen> {
             children: [
               CircularProgressIndicator(),
               SizedBox(height: 16),
-              Text('Registrando producto...'),
+              Text('Registrando operación...'),
             ],
           ),
         );
@@ -94,8 +111,9 @@ class _ProductListScreenState extends State<ProductListScreen> {
         var rptJson = rptaJson["datos"] ?? [];
 
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Producto registrado correctamente.')),
+          const SnackBar(content: Text('Operación registrado correctamente.')),
         );
+        await fetchProducts("");
       } else {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(content: Text('Error al registrar producto.')),
@@ -183,7 +201,10 @@ class _ProductListScreenState extends State<ProductListScreen> {
   void initState() {
     // TODO: implement initState
     super.initState();
-    fetchProducts("");
+    WidgetsBinding.instance.addPostFrameCallback((_){
+      fetchProducts("");
+    });
+
   }
 
   @override

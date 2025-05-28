@@ -3,6 +3,7 @@ import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'package:prycitas/constants.dart';
+import 'package:prycitas/view/clientesedit.dart';
 import 'clientesadd.dart';
 
 class ClientListScreen extends StatefulWidget {
@@ -41,7 +42,11 @@ class _ClientListScreenState extends State<ClientListScreen> {
             setState(() {
               clients.add({
                 "codigo":clientesJson[i]["codigo"],
-                "nombres":clientesJson[i]["nombres"]
+                "nombres":clientesJson[i]["nombres"],
+                "dni":clientesJson[i]["dni"],
+                "direccion":clientesJson[i]["direccion"],
+                "celular":clientesJson[i]["celular"] ?? "",
+                "fecha_nacimiento":clientesJson[i]["fecha_nacimiento"] ?? ""
               });
             });
           }
@@ -60,6 +65,86 @@ class _ClientListScreenState extends State<ClientListScreen> {
       );
       // return [];
     }
+  }
+
+  void _mostrarDialogoOpciones(String codigo, String name, String dni, String direccion, String celular, String nacimiento) async {
+    final resultado = await showDialog<String>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: Text('Selecciona una opción'),
+        content: Text('¿Qué deseas hacer con este cliente?'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop('eliminar'),
+            child: Text('Eliminar', style: TextStyle(color: Colors.red)),
+          ),
+          ElevatedButton(
+            onPressed: () => Navigator.of(context).pop('editar'),
+            child: Text('Editar'),
+          ),
+        ],
+      ),
+    );
+
+    if (resultado != null) {
+      print("Opción seleccionada: $resultado");
+      // Aquí puedes manejar la lógica según la opción seleccionada
+      if (resultado == 'eliminar') {
+        await registerCitas(codigo, "", "", "", "", "");
+        await fetchClientes("");
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Cliente eliminado.')));
+      } else if (resultado == 'editar') {
+        Navigator.pop(context);
+        Navigator.push(
+          context,
+          MaterialPageRoute(builder: (context) => EditClientScreen(codigo: codigo,name: name, dni: dni, direccion: direccion, celular: celular, nacimiento: nacimiento)),
+        );
+      }
+    }
+  }
+
+  Future<void> registerCitas(String codigo,String nombres, String dni, String fecha_nacimiento, String celular,String direccion) async {
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (BuildContext context) {
+        return const AlertDialog(
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              CircularProgressIndicator(),
+              SizedBox(height: 16),
+              Text('Eliminando cliente...'),
+            ],
+          ),
+        );
+      },
+    );
+    try {
+      final response = await http.post(Uri.parse("$url_base/clientes.editar.app.php"), body: {
+        "codigo":codigo,"nombres":nombres, "dni":dni, "fecha_nacimiento": fecha_nacimiento, "celular":celular, "direccion":direccion, "tipo": "Eliminar"
+      });
+
+      if (response.statusCode == 200) {
+        final Map<String, dynamic> rptaJson = json.decode(response.body);
+        var rptJson = rptaJson["datos"] ?? [];
+
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Cliente eliminado correctamente.')),
+        );
+      } else {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Error al eliminar cliente.')),
+        );
+      }
+    } catch (e) {
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Error: $e')),
+      );
+      // return [];
+    }
+    Navigator.pop(context);
   }
 
   @override
@@ -105,7 +190,14 @@ class _ClientListScreenState extends State<ClientListScreen> {
               children: clients
                   .where((client) => client["nombres"].toLowerCase().contains(searchQuery))
                   .map((client) => ListTile(
-                title: Text(client["nombres"]),
+                title: GestureDetector(
+                  onTap: () {
+                    print("HOla");
+                    _mostrarDialogoOpciones(client["codigo"],client["nombres"], client["dni"], client["direccion"], client["celular"], client["fecha_nacimiento"]);
+                  },
+                    child: Container(
+                      padding: EdgeInsets.symmetric(vertical: 15 , horizontal: 10),
+                        child: Text(client["nombres"]))),
                 //subtitle: Text("Código: ${client["codigo"]}"),
               ))
                   .toList(),

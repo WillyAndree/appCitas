@@ -174,13 +174,8 @@ class _AppointmentListScreenState extends State<AppointmentListScreen> {
                       "${citasJson[i]["hora"].toString().substring(0, 5)}:00"
               );
 
-              String estado;
-              if (currentTime.isAfter(citaTime)) {
-                estado = "R"; // Tarde
-              } else {
-                estado = "E"; // A tiempo
-              }
-              appointments.add(Appointment(citasJson[i]["idcita"],citasJson[i]["cliente"], citasJson[i]["fecha"]+" "+citasJson[i]["hora"], citasJson[i]["servicio"], citasJson[i]["trabajador"], citasJson[i]["codigo_producto"], citasJson[i]["precio"], estado));
+
+              appointments.add(Appointment(citasJson[i]["idcita"],citasJson[i]["cliente"], citasJson[i]["fecha"]+" "+citasJson[i]["hora"], citasJson[i]["servicio"], citasJson[i]["trabajador"], citasJson[i]["codigo_producto"], citasJson[i]["precio"], citasJson[i]["estado"]));
 
             });
           }
@@ -201,6 +196,8 @@ class _AppointmentListScreenState extends State<AppointmentListScreen> {
      // return [];
     }
   }
+
+
 
   @override
   void initState() {
@@ -313,6 +310,7 @@ class _AppointmentListScreenState extends State<AppointmentListScreen> {
 class AppointmentCard extends StatefulWidget {
   final Appointment appointment;
 
+
   AppointmentCard({required this.appointment});
 
   _AppointmentCardState createState() => _AppointmentCardState();
@@ -326,6 +324,133 @@ class _AppointmentCardState extends State<AppointmentCard>{
   String cod_tipodoc = "5";
   String cod_tipopago = "1";
 
+  void _mostrarDialogoOpciones(String codigo) async {
+    final resultado = await showDialog<String>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: Text('Selecciona una opción'),
+        content: Text('¿Qué deseas hacer con esta reserva?'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop('cancelar'),
+            child: Text('Cancelar Reserva', style: TextStyle(color: Colors.red)),
+          ),
+          ElevatedButton(
+            onPressed: () => Navigator.of(context).pop('pagar'),
+            child: Text('Pagar'),
+          ),
+        ],
+      ),
+    );
+
+    if (resultado != null) {
+      print("Opción seleccionada: $resultado");
+      // Aquí puedes manejar la lógica según la opción seleccionada
+      if (resultado == 'cancelar') {
+        await cancelarVentas(codigo, "C");
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Reserva cancelada.')));
+      } else if (resultado == 'pagar') {
+        //Navigator.pop(context);
+        showDialog(
+          context: context,
+          builder: (context) {
+            String selectedPaymentMethod = "Efectivo";
+            String selectedDocMethod = "Boleta Simple";
+            TextEditingController amountController = TextEditingController();
+            TextEditingController clientController = TextEditingController();
+            TextEditingController dniController = TextEditingController();
+            amountController.text = widget.appointment.precio;
+            return AlertDialog(
+              title: Text("Cerrar Cita"),
+              content: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  DropdownButtonFormField<String>(
+                    value: selectedPaymentMethod,
+                    onChanged: (value) {
+                      selectedPaymentMethod = value!;
+                      if(value == "Efectivo"){
+                        cod_tipopago = "1";
+                      }else if(value == "Tarjeta"){
+                        cod_tipopago = "2";
+                      }else if(value == "YAPE"){
+                        cod_tipopago = "3";
+                      }else if(value == "Transferencia"){
+                        cod_tipopago = "4";
+                      }else if(value == "PLIM"){
+                        cod_tipopago = "5";
+                      }
+                    },
+                    items: ["Efectivo", "Tarjeta", "Yape", "Plin", "Transferencia"].map((method) {
+                      return DropdownMenuItem(
+                        value: method,
+                        child: Text(method),
+                      );
+                    }).toList(),
+                    decoration: InputDecoration(labelText: "Método de Pago"),
+                  ),
+                  TextField(
+                    controller: amountController,
+                    keyboardType: TextInputType.number,
+                    decoration: InputDecoration(labelText: "Precio"),
+                  ),
+                  DropdownButtonFormField<String>(
+                    value: selectedDocMethod,
+                    onChanged: (value) {
+                      selectedDocMethod = value!;
+                      if(value == "Boleta Simple"){
+                        cod_tipodoc = "5";
+                      }else{
+                        cod_tipodoc = "2";
+                      }
+                    },
+                    items: ["Boleta Simple", "Boleta"].map((method) {
+                      return DropdownMenuItem(
+                        value: method,
+                        child: Text(method),
+                      );
+                    }).toList(),
+                    decoration: InputDecoration(labelText: "Tipo de Documento"),
+                  ),
+                  TextField(
+                    controller: dniController,
+                    keyboardType: TextInputType.number,
+                    decoration: InputDecoration(labelText: "DNI"),
+                    onChanged: (val) async{
+                      if(val.length == 8){
+                        dni_seleccionado = val;
+                        String rpta = await fetchClientes(val);
+                        clientController.text = rpta;
+                      }
+                    },
+                  ),
+                  TextField(
+                    controller: clientController,
+                    keyboardType: TextInputType.text,
+                    decoration: InputDecoration(labelText: "Cliente"),
+                  ),
+                ],
+              ),
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.pop(context),
+                  child: Text("Cancelar"),
+                ),
+                ElevatedButton(
+                  onPressed: () async{
+                    await registerVentas(cod_tipopago, widget.appointment.precio, cod_tipodoc, widget.appointment.codproducto,widget.appointment.precio, widget.appointment.codigo );
+
+                    Navigator.pop(context,"true");
+                  },
+                  child: Text("Confirmar"),
+                ),
+              ],
+            );
+          },
+        );
+      }
+    }
+  }
   Future<String> fetchClientes(String dni) async {
     try {
       final response = await http.post(Uri.parse("$url_base/cliente.listar.datos.dni.php"), body: {
@@ -410,7 +535,7 @@ class _AppointmentCardState extends State<AppointmentCard>{
     }
   }
 
-  Future<void> registerVentas(String codtipopago, String total, String codtipodoc, String codigo_producto, String precio) async {
+  Future<void> registerVentas(String codtipopago, String total, String codtipodoc, String codigo_producto, String precio, String codigo_reserva) async {
     DateTime now = DateTime.now();
     showDialog(
       context: context,
@@ -446,6 +571,7 @@ class _AppointmentCardState extends State<AppointmentCard>{
       if (response.statusCode == 200) {
         var rptaJson = json.decode(response.body);
         await atenderVentas(rptaJson["datos"], codtipodoc,"3",codigo_cliente,cliente_seleccionado, "-",dni_seleccionado, codtipopago, DateFormat('yyyy-MM-dd').format(now), total);
+        await cancelarVentas(codigo_reserva, "R");
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(content: Text('Venta registrada correctamente.')),
         );
@@ -497,6 +623,59 @@ class _AppointmentCardState extends State<AppointmentCard>{
 
   }
 
+  Future<void> cancelarVentas(String nro_venta, String tipo) async {
+    if(tipo == "C"){
+      showDialog(
+        context: context,
+        barrierDismissible: false,
+        builder: (BuildContext context) {
+          return const AlertDialog(
+            content: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                CircularProgressIndicator(),
+                SizedBox(height: 16),
+                Text('registrando operacion...'),
+              ],
+            ),
+          );
+        },
+      );
+    }
+
+
+    try {
+
+      final response = await http.post(Uri.parse("$url_base/cancelar.cita.php"), body: {
+        "codigo":nro_venta, "tipo":tipo
+      });
+
+      if (response.statusCode == 200) {
+        // var rptaJson = json.decode(response.body);
+
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Cita cancelada correctamente.')),
+        );
+
+      } else {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Error al cancelar cita.')),
+        );
+      }
+    } catch (e) {
+      print('Error: $e');
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Error: $e')),
+
+      );
+      // return [];
+    }
+    if(tipo == "C"){
+      Navigator.pop(context);
+    }
+
+  }
+
   @override
   Widget build(BuildContext context) {
     return Padding(
@@ -506,7 +685,7 @@ class _AppointmentCardState extends State<AppointmentCard>{
         front: Card(
           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
           elevation: 8,
-          color: widget.appointment.estado == "E" ? Colors.blue.shade800: Colors.green,
+          color: widget.appointment.estado == "E" ? Colors.blue.shade800: widget.appointment.estado == "C" ? Colors.red: Colors.green,
           child: Padding(
             padding: EdgeInsets.all(16),
             child: Column(
@@ -533,7 +712,7 @@ class _AppointmentCardState extends State<AppointmentCard>{
         back: Card(
           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
           elevation: 8,
-          color: widget.appointment.estado == "E" ? Colors.blue.shade800: Colors.green,
+          color: widget.appointment.estado == "E" ? Colors.blue.shade800: widget.appointment.estado == "C" ? Colors.red: Colors.green,
           child: Padding(
             padding: EdgeInsets.all(16),
             child: Column(
@@ -548,109 +727,17 @@ class _AppointmentCardState extends State<AppointmentCard>{
                 Row(
                   children: [
                     Visibility(
-                        visible: true,
+                        visible: widget.appointment.estado == 'E' ? true : false,
                         child: ElevatedButton(
                           onPressed: () {
-                            showDialog(
-                              context: context,
-                              builder: (context) {
-                                String selectedPaymentMethod = "Efectivo";
-                                String selectedDocMethod = "Boleta Simple";
-                                TextEditingController amountController = TextEditingController();
-                                TextEditingController clientController = TextEditingController();
-                                TextEditingController dniController = TextEditingController();
-                                amountController.text = widget.appointment.precio;
-                                return AlertDialog(
-                                  title: Text("Cerrar Cita"),
-                                  content: Column(
-                                    mainAxisSize: MainAxisSize.min,
-                                    children: [
-                                      DropdownButtonFormField<String>(
-                                        value: selectedPaymentMethod,
-                                        onChanged: (value) {
-                                          selectedPaymentMethod = value!;
-                                          if(value == "Efectivo"){
-                                            cod_tipopago = "1";
-                                          }else if(value == "Tarjeta"){
-                                            cod_tipopago = "2";
-                                          }else if(value == "YAPE"){
-                                            cod_tipopago = "3";
-                                          }else if(value == "Transferencia"){
-                                            cod_tipopago = "4";
-                                          }else if(value == "PLIM"){
-                                            cod_tipopago = "5";
-                                          }
-                                        },
-                                        items: ["Efectivo", "Tarjeta", "Yape", "Plin", "Transferencia"].map((method) {
-                                          return DropdownMenuItem(
-                                            value: method,
-                                            child: Text(method),
-                                          );
-                                        }).toList(),
-                                        decoration: InputDecoration(labelText: "Método de Pago"),
-                                      ),
-                                      TextField(
-                                        controller: amountController,
-                                        keyboardType: TextInputType.number,
-                                        decoration: InputDecoration(labelText: "Precio"),
-                                      ),
-                                      DropdownButtonFormField<String>(
-                                        value: selectedDocMethod,
-                                        onChanged: (value) {
-                                          selectedDocMethod = value!;
-                                          if(value == "Boleta Simple"){
-                                            cod_tipodoc = "5";
-                                          }else{
-                                            cod_tipodoc = "2";
-                                          }
-                                        },
-                                        items: ["Boleta Simple", "Boleta"].map((method) {
-                                          return DropdownMenuItem(
-                                            value: method,
-                                            child: Text(method),
-                                          );
-                                        }).toList(),
-                                        decoration: InputDecoration(labelText: "Tipo de Documento"),
-                                      ),
-                                      TextField(
-                                        controller: dniController,
-                                        keyboardType: TextInputType.number,
-                                        decoration: InputDecoration(labelText: "DNI"),
-                                        onChanged: (val) async{
-                                          if(val.length == 8){
-                                            dni_seleccionado = val;
-                                            String rpta = await fetchClientes(val);
-                                            clientController.text = rpta;
-                                          }
-                                        },
-                                      ),
-                                      TextField(
-                                        controller: clientController,
-                                        keyboardType: TextInputType.text,
-                                        decoration: InputDecoration(labelText: "Cliente"),
-                                      ),
-                                    ],
-                                  ),
-                                  actions: [
-                                    TextButton(
-                                      onPressed: () => Navigator.pop(context),
-                                      child: Text("Cancelar"),
-                                    ),
-                                    ElevatedButton(
-                                      onPressed: () async{
-                                        await registerVentas(cod_tipopago, widget.appointment.precio, cod_tipodoc, widget.appointment.codproducto,widget.appointment.precio );
-                                        Navigator.pop(context,"true");
-                                      },
-                                      child: Text("Confirmar"),
-                                    ),
-                                  ],
-                                );
-                              },
-                            );
+                            _mostrarDialogoOpciones(widget.appointment.codigo);
                           },
                           child: Text("Cerrar Cita", style: TextStyle(color: Colors.blue, fontWeight: FontWeight.bold),),
                         )),
                     const SizedBox(width: 10,),
+                    Visibility(
+                      visible: widget.appointment.estado == 'E' || widget.appointment.estado == 'R' ? true : false,
+                        child:
                     ElevatedButton(
                       onPressed: () {
                         Navigator.push(
@@ -660,7 +747,7 @@ class _AppointmentCardState extends State<AppointmentCard>{
 
                       },
                       child: Text("Agregar detalle", style: TextStyle(color: Colors.blue, fontWeight: FontWeight.bold),),
-                    )
+                    ))
                   ],
                 )
 
