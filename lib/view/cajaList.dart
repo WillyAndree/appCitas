@@ -46,6 +46,8 @@ class _CashboxScreenState extends State<CashboxScreen> {
                 "Plin": double.parse(paymentJson[i]["plim"]),
                 "Transferencia": 0.00,
                 "Efectivo en caja": double.parse(paymentJson[i]["efectivo_caja"]),
+                "Ingresos": double.parse(paymentJson[i]["ingresos_extra"]),
+                "Egresos": double.parse(paymentJson[i]["egresos"]),
               };
             });
           }
@@ -73,7 +75,9 @@ class _CashboxScreenState extends State<CashboxScreen> {
     Colors.purple,
     Colors.orange,
     Colors.red,
-    Colors.teal
+    Colors.teal,
+    Colors.blueAccent,
+    Colors.red
   ];
 
   DateTime selectedDate = DateTime.now();
@@ -88,6 +92,215 @@ class _CashboxScreenState extends State<CashboxScreen> {
     });
   }
 
+   Future<void> mostrarDialogoConfirmacionArqueo(BuildContext context, String monto_inicial,String monto) async {
+     return showDialog(
+       context: context,
+       builder: (context) => AlertDialog(
+         title: Text('Confirmación'),
+         content: Text('¿Desea arquear la caja con S/. $monto?'),
+         actions: [
+           TextButton(
+             onPressed: () {
+               Navigator.of(context).pop(); // Cierra el diálogo
+             },
+             child: Text('Cancelar'),
+           ),
+           ElevatedButton(
+             onPressed: () async{
+               await arquearCaja(monto_inicial, monto, idusuario_capturado,idsucursal);
+               Navigator.of(context).pop(); // Cierra el diálogo
+                // Ejecuta la acción de arqueo
+             },
+             child: Text('Arquear'),
+           ),
+         ],
+       ),
+     );
+   }
+   Future<void> arquearCaja(String montoinicial,String montofinal,String usuario, String sucursal) async {
+     showDialog(
+       context: context,
+       barrierDismissible: false,
+       builder: (BuildContext context) {
+         return const AlertDialog(
+           content: Column(
+             mainAxisSize: MainAxisSize.min,
+             children: [
+               CircularProgressIndicator(),
+               SizedBox(height: 16),
+               Text('Arqueando caja...'),
+             ],
+           ),
+         );
+       },
+     );
+     try {
+       final response = await http.post(Uri.parse("$url_base/caja.arquear.php"), body: {
+         "monto_inicial":montoinicial,"monto_final":montofinal, "usuario":usuario,"sucursal":sucursal, "fecha":"${selectedDate.year}-${selectedDate.month}-${selectedDate.day}"
+       });
+
+       if (response.statusCode == 200) {
+         final Map<String, dynamic> rptaJson = json.decode(response.body);
+         var rptJson = rptaJson["datos"] ?? [];
+         await fetchCaja("${selectedDate.year}-${selectedDate.month}-${selectedDate.day}", sucursal);
+         ScaffoldMessenger.of(context).showSnackBar(
+           const SnackBar(content: Text('Carja arqueada correctamente.')),
+         );
+       } else {
+         ScaffoldMessenger.of(context).showSnackBar(
+           const SnackBar(content: Text('Error al arquear caja.')),
+         );
+       }
+     } catch (e) {
+
+       ScaffoldMessenger.of(context).showSnackBar(
+         SnackBar(content: Text('Error: $e')),
+       );
+       // return [];
+     }
+     Navigator.pop(context);
+   }
+
+   Future<void> registerIngresos(String monto,String detalle, String sucursal) async {
+     showDialog(
+       context: context,
+       barrierDismissible: false,
+       builder: (BuildContext context) {
+         return const AlertDialog(
+           content: Column(
+             mainAxisSize: MainAxisSize.min,
+             children: [
+               CircularProgressIndicator(),
+               SizedBox(height: 16),
+               Text('Registrando ingreso...'),
+             ],
+           ),
+         );
+       },
+     );
+     try {
+       final response = await http.post(Uri.parse("$url_base/ingreso.agregar.php"), body: {
+         "monto":monto,"detalle":detalle, "sucursal":sucursal, "fecha":"${selectedDate.year}-${selectedDate.month}-${selectedDate.day}"
+       });
+
+       if (response.statusCode == 200) {
+         final Map<String, dynamic> rptaJson = json.decode(response.body);
+         var rptJson = rptaJson["datos"] ?? [];
+          await fetchCaja("${selectedDate.year}-${selectedDate.month}-${selectedDate.day}", sucursal);
+         ScaffoldMessenger.of(context).showSnackBar(
+           const SnackBar(content: Text('Ingreso creado correctamente.')),
+         );
+       } else {
+         ScaffoldMessenger.of(context).showSnackBar(
+           const SnackBar(content: Text('Error al crear ingreso.')),
+         );
+       }
+     } catch (e) {
+
+       ScaffoldMessenger.of(context).showSnackBar(
+         SnackBar(content: Text('Error: $e')),
+       );
+       // return [];
+     }
+     Navigator.pop(context);
+   }
+
+   Future<void> registerEgresos(String monto,String detalle, String sucursal) async {
+     showDialog(
+       context: context,
+       barrierDismissible: false,
+       builder: (BuildContext context) {
+         return const AlertDialog(
+           content: Column(
+             mainAxisSize: MainAxisSize.min,
+             children: [
+               CircularProgressIndicator(),
+               SizedBox(height: 16),
+               Text('Registrando egreso...'),
+             ],
+           ),
+         );
+       },
+     );
+     try {
+       final response = await http.post(Uri.parse("$url_base/egreso.agregar.php"), body: {
+         "monto":monto,"detalle":detalle, "sucursal":sucursal, "fecha":"${selectedDate.year}-${selectedDate.month}-${selectedDate.day}"
+       });
+
+       if (response.statusCode == 200) {
+         final Map<String, dynamic> rptaJson = json.decode(response.body);
+         var rptJson = rptaJson["datos"] ?? [];
+         await fetchCaja("${selectedDate.year}-${selectedDate.month}-${selectedDate.day}", sucursal);
+         ScaffoldMessenger.of(context).showSnackBar(
+           const SnackBar(content: Text('Egreso creado correctamente.')),
+         );
+       } else {
+         ScaffoldMessenger.of(context).showSnackBar(
+           const SnackBar(content: Text('Error al crear egreso.')),
+         );
+       }
+     } catch (e) {
+
+       ScaffoldMessenger.of(context).showSnackBar(
+         SnackBar(content: Text('Error: $e')),
+       );
+       // return [];
+     }
+     Navigator.pop(context);
+   }
+   void mostrarDialogoMotivoMonto(BuildContext context, String method) {
+     final TextEditingController motivoController = TextEditingController();
+     final TextEditingController montoController = TextEditingController();
+
+     showDialog(
+       context: context,
+       builder: (context) => AlertDialog(
+         title: Text('Ingrese datos'),
+         content: Column(
+           mainAxisSize: MainAxisSize.min,
+           children: [
+             TextField(
+               controller: motivoController,
+               decoration: InputDecoration(labelText: 'Motivo'),
+             ),
+             TextField(
+               controller: montoController,
+               keyboardType: TextInputType.number,
+               decoration: InputDecoration(labelText: 'Monto'),
+             ),
+           ],
+         ),
+         actions: [
+           TextButton(
+             onPressed: () {
+               Navigator.pop(context); // Cierra el diálogo
+             },
+             child: Text('Cancelar'),
+           ),
+           ElevatedButton(
+             onPressed: () {
+               String motivo = motivoController.text.trim();
+               String monto = montoController.text.trim();
+
+               if(method == "Ingresos"){
+                 registerIngresos(monto, motivo, idsucursal);
+               }else{
+                 registerEgresos(monto, motivo, idsucursal);
+               }
+
+               // Aquí puedes hacer lo que necesites con los valores
+               print('Motivo: $motivo');
+               print('Monto: $monto');
+
+               Navigator.pop(context); // Cierra el diálogo
+             },
+             child: Text('Aceptar'),
+           ),
+         ],
+       ),
+     );
+   }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -96,7 +309,9 @@ class _CashboxScreenState extends State<CashboxScreen> {
           foregroundColor: Colors.white,
           actions: [
             IconButton(onPressed: (){
-
+              double? cajaInicial = payments["Caja inicial"];
+              double? cajafinal = payments["Efectivo en caja"];
+              mostrarDialogoConfirmacionArqueo(context,cajaInicial.toString(),cajafinal.toString());
             }, icon: Icon(Icons.card_membership_sharp))
           ],
           title: Text("Caja")),
@@ -122,7 +337,7 @@ class _CashboxScreenState extends State<CashboxScreen> {
                   setState(() {
                     selectedDate = pickedDate;
                   });
-                  await fetchCaja("${selectedDate.year}-${selectedDate.month}-${selectedDate.day}", "3" );
+                  await fetchCaja("${selectedDate.year}-${selectedDate.month}-${selectedDate.day}", idsucursal );
                 }
               },
             ),
@@ -145,7 +360,13 @@ class _CashboxScreenState extends State<CashboxScreen> {
                     color: colors[index % colors.length],
                     shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
                     child: Center(
-                      child: Column(
+                      child: GestureDetector(
+                        onTap: (){
+                          if(method == "Ingresos" || method == "Egresos"){
+                            mostrarDialogoMotivoMonto(context, method);
+                          }
+                        },
+                          child: Column(
                         mainAxisSize: MainAxisSize.min,
                         children: [
                           Text(
@@ -158,7 +379,7 @@ class _CashboxScreenState extends State<CashboxScreen> {
                             style: TextStyle(color: Colors.white, fontSize: 16),
                           ),
                         ],
-                      ),
+                      )),
                     ),
                   );
                 },

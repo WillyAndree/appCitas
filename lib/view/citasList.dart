@@ -448,7 +448,7 @@ class _AppointmentCardState extends State<AppointmentCard>{
                 ),
                 ElevatedButton(
                   onPressed: () async{
-                    await registerVentas(cod_tipopago, totalventa, cod_tipodoc, widget.appointment.codproducto,widget.appointment.precio, widget.appointment.codigo );
+                    await registerVentas(cod_tipopago, totalventa == "0" ? widget.appointment.precio: totalventa, cod_tipodoc, widget.appointment.codproducto,widget.appointment.precio, widget.appointment.codigo );
 
                     Navigator.pop(context,"true");
                   },
@@ -505,14 +505,14 @@ class _AppointmentCardState extends State<AppointmentCard>{
 
   Future<String> fetchClienteReniec(String dni) async {
     try {
-      final response = await http.post(Uri.parse("$url_base/consulta_reniecc.php"), body: {
-        "dni":dni
+      final response = await http.post(Uri.parse("https://api.migo.pe/api/v1/dni/"), body: {
+        "dni":dni,"token":"H93kRwLXwUbqNdZuNXl7ay324SqIrYdJ571pMK72HaPYV0Yesg99IvfaGWa1"
       });
 
       if (response.statusCode == 200) {
         var rptaJson = json.decode(response.body);
         //var clientesJson = rptaJson["datos"] ?? [];
-        if ( rptaJson.isEmpty || rptaJson[1] == null) {
+        if ( rptaJson.isEmpty ) {
           setState((){
             codigo_cliente = "0";
           });
@@ -524,9 +524,9 @@ class _AppointmentCardState extends State<AppointmentCard>{
           setState((){
             codigo_cliente = "0";
             dni_seleccionado = dni;
-            cliente_seleccionado = rptaJson[1]+rptaJson[2]+rptaJson[3];
+            cliente_seleccionado = rptaJson["nombre"];
           });
-          return rptaJson[1]+rptaJson[2]+rptaJson[3];
+          return rptaJson["nombre"];
         }
 
       } else {

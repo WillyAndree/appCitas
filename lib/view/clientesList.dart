@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'package:prycitas/constants.dart';
 import 'package:prycitas/view/clientesedit.dart';
+import 'package:url_launcher/url_launcher.dart';
 import 'clientesadd.dart';
 
 class ClientListScreen extends StatefulWidget {
@@ -147,6 +148,16 @@ class _ClientListScreenState extends State<ClientListScreen> {
     Navigator.pop(context);
   }
 
+  Future<void> _launchURL(String enlace) async {
+    final Uri url = Uri.parse(enlace);
+
+    if (!await launchUrl(url, mode: LaunchMode.externalApplication)) {
+      throw Exception('No se pudo abrir la URL: $enlace');
+    }
+  }
+
+
+
   @override
   void initState() {
     // TODO: implement initState
@@ -195,9 +206,18 @@ class _ClientListScreenState extends State<ClientListScreen> {
                     print("HOla");
                     _mostrarDialogoOpciones(client["codigo"],client["nombres"], client["dni"], client["direccion"], client["celular"], client["fecha_nacimiento"]);
                   },
-                    child: Container(
-                      padding: EdgeInsets.symmetric(vertical: 15 , horizontal: 10),
-                        child: Text(client["nombres"]))),
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                      Container(
+                          padding: EdgeInsets.symmetric(vertical: 15 , horizontal: 10),
+                          child: Text(client["nombres"])),
+                      Container(child: IconButton(icon: Icon(Icons.mark_unread_chat_alt_rounded),
+                          onPressed:(){
+                        String enlace = "https://wa.me/${client["celular"]}?text=Hola";
+                        _launchURL(enlace);
+                      }))
+    ],)),
                 //subtitle: Text("Código: ${client["codigo"]}"),
               ))
                   .toList(),

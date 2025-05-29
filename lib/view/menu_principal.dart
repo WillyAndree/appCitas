@@ -1,4 +1,7 @@
+import 'dart:convert';
+
 import 'package:flutter/material.dart';
+import 'package:prycitas/constants.dart';
 import 'package:prycitas/view/cajaList.dart';
 import 'package:prycitas/view/citasList.dart';
 import 'package:prycitas/view/clientesList.dart';
@@ -6,8 +9,192 @@ import 'package:prycitas/view/loginpage.dart';
 import 'package:prycitas/view/productList.dart';
 import 'package:prycitas/view/ventasList.dart';
 import 'package:fl_chart/fl_chart.dart';
+import 'package:http/http.dart' as http;
 
-class MainScreen extends StatelessWidget {
+class MainScreen extends StatefulWidget {
+  @override
+  _MainScreenState createState() => _MainScreenState();
+}
+
+class _MainScreenState extends State<MainScreen> {
+
+  List sales = [];
+  List clients = [];
+  List products = [];
+  @override
+  void initState() {
+    // TODO: implement initState
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_){
+      DateTime actual = DateTime.now();
+     fetchVentas();
+     fetchClientes(actual.month);
+      fetchProductos(actual.month);
+    });
+  }
+  Future<void> fetchVentas() async {
+    try {
+
+
+      final response = await http.post(Uri.parse("$url_base/dashboard.listar.grafico.lineal.php"), body: {
+        "sucursal":idsucursal
+      });
+
+      if (response.statusCode == 200) {
+        final Map<String, dynamic> rptaJson = json.decode(response.body);
+        var sellJson = rptaJson["datos"] ?? [];
+        if ( sellJson.isEmpty) {
+          setState((){
+            sales.clear();
+          });
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('No se encontraron ventas.')),
+          );
+          return;
+        }else{
+          setState((){
+            sales.clear();
+          });
+
+
+          for(int i = 0; i <sellJson.length; i++){
+            setState(() {
+              sales.add( {
+                "1": sellJson[i]["enero"],
+                "2": sellJson[i]["febrero"],
+                "3": sellJson[i]["marzo"],
+                "4": sellJson[i]["abril"],
+                "5": sellJson[i]["mayo"],
+                "6": sellJson[i]["junio"],
+                "7": sellJson[i]["julio"],
+                "8": sellJson[i]["agosto"],
+                "9": sellJson[i]["setiembre"],
+                "10": sellJson[i]["octubre"],
+                "11": sellJson[i]["noviembre"],
+                "12": sellJson[i]["diciembre"]
+              });
+
+            });
+          }
+        }
+
+
+      } else {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Error al obtener ventas.')),
+        );
+        // return [];
+      }
+    } catch (e) {
+      Navigator.of(context).pop();
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Error: $e')),
+      );
+      // return [];
+    }
+  }
+  Future<void> fetchClientes(int mes) async {
+    try {
+
+
+      final response = await http.post(Uri.parse("$url_base/dashboard.listar.clientes.top.php"), body: {
+        "mes":mes.toString(),"sucursal":idsucursal
+      });
+
+      if (response.statusCode == 200) {
+        final Map<String, dynamic> rptaJson = json.decode(response.body);
+        var sellJson = rptaJson["datos"] ?? [];
+        if ( sellJson.isEmpty) {
+          setState((){
+            clients.clear();
+          });
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('No se encontraron clientes.')),
+          );
+          return;
+        }else{
+          setState((){
+            clients.clear();
+          });
+
+
+          for(int i = 0; i <sellJson.length; i++){
+            setState(() {
+              clients.add( {
+                "cliente": sellJson[i]["cliente"],
+                "total": sellJson[i]["total"],
+              });
+
+            });
+          }
+        }
+
+
+      } else {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Error al obtener clientes.')),
+        );
+        // return [];
+      }
+    } catch (e) {
+      Navigator.of(context).pop();
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Error: $e')),
+      );
+      // return [];
+    }
+  }
+  Future<void> fetchProductos(int mes) async {
+    try {
+
+
+      final response = await http.post(Uri.parse("$url_base/dashboard.listar.productos.top.php"), body: {
+        "mes":mes.toString(),"sucursal":idsucursal
+      });
+
+      if (response.statusCode == 200) {
+        final Map<String, dynamic> rptaJson = json.decode(response.body);
+        var sellJson = rptaJson["datos"] ?? [];
+        if ( sellJson.isEmpty) {
+          setState((){
+            products.clear();
+          });
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('No se encontraron productos.')),
+          );
+          return;
+        }else{
+          setState((){
+            products.clear();
+          });
+
+
+          for(int i = 0; i <sellJson.length; i++){
+            setState(() {
+              products.add( {
+                "producto": sellJson[i]["producto"],
+                "total": sellJson[i]["total"],
+              });
+
+            });
+          }
+        }
+
+
+      } else {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Error al obtener productos.')),
+        );
+        // return [];
+      }
+    } catch (e) {
+      Navigator.of(context).pop();
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Error: $e')),
+      );
+      // return [];
+    }
+  }
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -78,15 +265,15 @@ class MainScreen extends StatelessWidget {
       body: Column(
         children: [
           Container(child: Text("Nivel de Ventas", style: TextStyle(fontWeight: FontWeight.bold),),),
-          Expanded(child: SalesChart()),
+          Expanded(child: SalesChart(data: sales,)),
           SizedBox(height: 20,),
           Divider(thickness: 3,),
           Container(child: Text("TOP CLIENTES", style: TextStyle(fontWeight: FontWeight.bold)),),
-          Expanded(child: TopClientsChart()),
+          Expanded(child: TopClientsChart(data: clients,)),
           SizedBox(height: 20,),
           Divider(thickness: 3,),
           Container(child: Text("TOP PRODUCTOS", style: TextStyle(fontWeight: FontWeight.bold)),),
-          Expanded(child: TopProductsChart()),
+          Expanded(child: TopProductsChart(data:products)),
         ],
       ),
     );
@@ -94,40 +281,90 @@ class MainScreen extends StatelessWidget {
 }
 
 
-class SalesChart extends StatelessWidget {
+class SalesChart extends StatefulWidget {
+  List data = [];
+  SalesChart({super.key, required this.data});
+
+  @override
+  _SalesChartState createState() => _SalesChartState();
+}
+
+class _SalesChartState extends State<SalesChart> {
+
   @override
   Widget build(BuildContext context) {
     return Padding(
       padding: const EdgeInsets.all(8.0),
       child: LineChart(
-        LineChartData(
-          gridData: FlGridData(show: false),
-          titlesData: FlTitlesData(
-            leftTitles: AxisTitles(sideTitles: SideTitles(showTitles: false, getTitlesWidget: (value, meta) => Text('\$${value.toInt()}'))),
-            bottomTitles: AxisTitles(sideTitles: SideTitles(showTitles: true, getTitlesWidget: (value, meta) => Text('Mes ${value.toInt()}'))),
-          ),
-          borderData: FlBorderData(show: false),
-          lineBarsData: [
-            LineChartBarData(
-              spots: [
-                FlSpot(1, 50),
-                FlSpot(2, 80),
-                FlSpot(3, 100),
-                FlSpot(4, 150),
-                FlSpot(5, 200),
-              ],
-              isCurved: true,
-              color: Colors.blue,
-              dotData: FlDotData(show: true),
+          LineChartData(
+            gridData: FlGridData(show: false),
+            titlesData: FlTitlesData(
+              rightTitles: AxisTitles(sideTitles: SideTitles(showTitles: false)),
+              bottomTitles: AxisTitles(
+                sideTitles: SideTitles(
+                  showTitles: true,
+                  interval: 1,
+                  getTitlesWidget: (value, meta) {
+                    const meses = [
+                      '', // Índice 0 no se usa
+                      'Ene', 'Feb', 'Mar', 'Abr', 'May', 'Jun',
+                      'Jul', 'Ago', 'Sep', 'Oct', 'Nov', 'Dic'
+                    ];
+                    return Text(
+                      value.toInt() >= 1 && value.toInt() <= 12 ? meses[value.toInt()] : '',
+                      style: TextStyle(fontSize: 10),
+                    );
+                  },
+                ),
+              ),
+              topTitles: AxisTitles(sideTitles: SideTitles(showTitles: false)),
+              leftTitles: AxisTitles(
+                sideTitles: SideTitles(
+                  reservedSize: 50,
+                  showTitles: true,
+                  getTitlesWidget: (value, meta) => Text('S/.${value.toInt()}',
+                      style: TextStyle(fontSize: 11),),
+                ),
+              ),
             ),
-          ],
-        ),
+            borderData: FlBorderData(show: false),
+            lineBarsData: [
+              LineChartBarData(
+                spots: [
+                  FlSpot(1, widget.data.isNotEmpty ? double.parse(widget.data[0]["1"]): 0 ),
+                  FlSpot(2,  widget.data.isNotEmpty ? double.parse(widget.data[0]["2"]): 0),
+                  FlSpot(3,  widget.data.isNotEmpty ? double.parse(widget.data[0]["3"]): 0),
+                  FlSpot(4,  widget.data.isNotEmpty ? double.parse(widget.data[0]["4"]): 0),
+                  FlSpot(5,  widget.data.isNotEmpty ? double.parse(widget.data[0]["5"]): 0),
+                  FlSpot(6,  widget.data.isNotEmpty ? double.parse(widget.data[0]["6"]): 0),
+                  FlSpot(7,  widget.data.isNotEmpty ? double.parse(widget.data[0]["7"]): 0),
+                  FlSpot(8,  widget.data.isNotEmpty ? double.parse(widget.data[0]["8"]): 0),
+                  FlSpot(9,  widget.data.isNotEmpty ? double.parse(widget.data[0]["9"]): 0),
+                  FlSpot(10, widget.data.isNotEmpty ? double.parse(widget.data[0]["10"]): 0),
+                  FlSpot(11, widget.data.isNotEmpty ? double.parse(widget.data[0]["11"]): 0),
+                  FlSpot(12, widget.data.isNotEmpty ?double.parse(widget.data[0]["12"]): 0),
+                ],
+                isCurved: true,
+                color: Colors.blue,
+                dotData: FlDotData(show: true),
+              ),
+            ],
+          )
+
       ),
     );
   }
 }
 
-class TopClientsChart extends StatelessWidget {
+class TopClientsChart extends StatefulWidget {
+  List data = [];
+  TopClientsChart({super.key, required this.data});
+
+  @override
+  _TopClientsChartState createState() => _TopClientsChartState();
+}
+
+class _TopClientsChartState extends State<TopClientsChart> {
   @override
   Widget build(BuildContext context) {
     return Padding(
@@ -140,11 +377,11 @@ class TopClientsChart extends StatelessWidget {
             bottomTitles: AxisTitles(sideTitles: SideTitles(showTitles: true, getTitlesWidget: (value, meta) {
               switch (value.toInt()) {
                 case 1:
-                  return Text("Cliente A");
+                  return widget.data.isNotEmpty ? Text(widget.data.length > 0 ? widget.data[0]["cliente"] : ""): Text("");
                 case 2:
-                  return Text("Cliente B");
+                  return widget.data.isNotEmpty ? Text(widget.data.length > 1 ? widget.data[1]["cliente"]: ""): Text("");
                 case 3:
-                  return Text("Cliente C");
+                  return widget.data.isNotEmpty ? Text(widget.data.length > 2 ?widget.data[2]["cliente"]: "")  :Text("");
                 default:
                   return Text("");
               }
@@ -152,9 +389,9 @@ class TopClientsChart extends StatelessWidget {
           ),
           borderData: FlBorderData(show: false),
           barGroups: [
-            BarChartGroupData(x: 1, barRods: [BarChartRodData(toY: 300, color: Colors.red)]),
-            BarChartGroupData(x: 2, barRods: [BarChartRodData(toY: 250, color: Colors.green)]),
-            BarChartGroupData(x: 3, barRods: [BarChartRodData(toY: 200, color: Colors.blue)]),
+            BarChartGroupData(x: 1, barRods: [BarChartRodData(toY: widget.data.isNotEmpty ? widget.data.length > 0 ? double.parse(widget.data[0]["total"]) :0 : 0, color: Colors.red)]),
+            BarChartGroupData(x: 2, barRods: [BarChartRodData(toY: widget.data.isNotEmpty ? widget.data.length > 1 ? double.parse(widget.data[1]["total"]): 0: 0, color: Colors.green)]),
+            BarChartGroupData(x: 3, barRods: [BarChartRodData(toY: widget.data.isNotEmpty ? widget.data.length > 2 ? double.parse(widget.data[2]["total"]): 0: 0, color: Colors.blue)]),
           ],
         ),
       ),
@@ -162,7 +399,15 @@ class TopClientsChart extends StatelessWidget {
   }
 }
 
-class TopProductsChart extends StatelessWidget {
+class TopProductsChart extends StatefulWidget {
+  List data = [];
+  TopProductsChart({super.key, required this.data});
+
+  @override
+  _TopProductsChartState createState() => _TopProductsChartState();
+}
+
+class _TopProductsChartState extends State<TopProductsChart> {
   @override
   Widget build(BuildContext context) {
     return Padding(
@@ -175,11 +420,11 @@ class TopProductsChart extends StatelessWidget {
             bottomTitles: AxisTitles(sideTitles: SideTitles(showTitles: true, getTitlesWidget: (value, meta) {
               switch (value.toInt()) {
                 case 1:
-                  return Text("Producto X");
+                  return widget.data.isNotEmpty ? Text(widget.data.length > 0 ? widget.data[0]["producto"] : ""): Text("");
                 case 2:
-                  return Text("Producto Y");
+                  return widget.data.isNotEmpty ? Text(widget.data.length > 1 ? widget.data[1]["producto"] : ""): Text("");
                 case 3:
-                  return Text("Producto Z");
+                  return widget.data.isNotEmpty ? Text(widget.data.length > 2 ? widget.data[2]["profucto"] : ""): Text("");
                 default:
                   return Text("");
               }
@@ -192,7 +437,7 @@ class TopProductsChart extends StatelessWidget {
               barRods: [
                 BarChartRodData(
                   fromY: 0,
-                  toY: 300,
+                  toY: widget.data.isNotEmpty ? widget.data.length > 0 ? double.parse(widget.data[0]["total"]) :0 : 0,
                   color: Colors.red,
                   width: 20,  // Ajusta el ancho de las barras
                 ),
@@ -203,7 +448,7 @@ class TopProductsChart extends StatelessWidget {
               barRods: [
                 BarChartRodData(
                   fromY: 0,
-                  toY: 250,
+                  toY: widget.data.isNotEmpty ? widget.data.length > 1 ? double.parse(widget.data[1]["total"]) :0 : 0,
                   color: Colors.green,
                   width: 15,  // Ajusta el ancho de las barras
                 ),
@@ -214,7 +459,7 @@ class TopProductsChart extends StatelessWidget {
               barRods: [
                 BarChartRodData(
                   fromY: 0,
-                  toY: 200,
+                  toY: widget.data.isNotEmpty ? widget.data.length > 2 ? double.parse(widget.data[2]["total"]) :0 : 0,
                   color: Colors.blue,
                   width: 15,  // Ajusta el ancho de las barras
                 ),
