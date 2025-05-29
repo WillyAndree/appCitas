@@ -9,3 +9,4 @@ const url_base = "https://vital.vlinesys.com/app/controlador";
 //const url_base = "https://web.acpagro.com/";
 bool isInitialized = false;
 String idusuario_capturado = "";
+String idsucursal = "";

@@ -7,6 +7,10 @@ class Appointment {
   final String codproducto;
   final String precio;
   final String estado;
+  final String tratamientos;
+  final String antecedentes;
+  final String diagnosticos;
 
-  Appointment(this.codigo,this.clientName, this.dateTime, this.treatment, this.doctor, this.codproducto, this.precio, this.estado);
+
+  Appointment(this.codigo,this.clientName, this.dateTime, this.treatment, this.doctor, this.codproducto, this.precio, this.estado, this.antecedentes, this.tratamientos, this.diagnosticos);
 }

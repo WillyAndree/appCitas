@@ -3,10 +3,11 @@ import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:prycitas/constants.dart';
 import 'package:http/http.dart' as http;
+import 'package:prycitas/view/citasList.dart';
 
 class HistoriaClinicaScreen extends StatefulWidget {
-  String idcita;
-  HistoriaClinicaScreen({required this.idcita});
+  String idcita, antecedentes, diagnostico, tratamientos;
+  HistoriaClinicaScreen({required this.idcita, required this.antecedentes, required this.diagnostico, required this.tratamientos});
   @override
   _HistoriaClinicaScreenState createState() => _HistoriaClinicaScreenState();
 }
@@ -27,6 +28,15 @@ class _HistoriaClinicaScreenState extends State<HistoriaClinicaScreen> {
     }
 
 
+  }
+
+  @override
+  void initState() {
+    // TODO: implement initState
+    super.initState();
+   antecedentesController.text = widget.antecedentes;
+   diagnosticosController.text = widget.diagnostico;
+   tratamientosController.text = widget.tratamientos;
   }
 
   Future<bool> registerDetail(String antecedentes, String diagnosticos, String tratamientos, String idcita) async {
@@ -85,6 +95,15 @@ class _HistoriaClinicaScreenState extends State<HistoriaClinicaScreen> {
       resizeToAvoidBottomInset:false,
       appBar: AppBar(
         title: Text('Historia Clínica'),
+        leading: IconButton(
+          icon: Icon(Icons.arrow_back, color: Colors.black),
+          onPressed: () {
+            Navigator.of(context).pop();
+            Navigator.push(
+                context,
+            MaterialPageRoute(builder: (context) => AppointmentListScreen()));
+          }
+        ),
         backgroundColor: Colors.blue,
         foregroundColor: Colors.white,
       ),

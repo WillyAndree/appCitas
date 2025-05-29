@@ -84,7 +84,7 @@ class _CashboxScreenState extends State<CashboxScreen> {
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_){
       DateTime actual = DateTime.now();
-      fetchCaja("${actual.year}-${actual.month}-${actual.day}", "3" );
+      fetchCaja("${actual.year}-${actual.month}-${actual.day}",idsucursal );
     });
   }
 

@@ -14,12 +14,15 @@ class _SalesListScreenState extends State<SalesListScreen> {
 
 
   List<Map<String, dynamic>> sales = [];
+  List<Map<String, dynamic>> sales_detail = [];
 
   String searchQuery = "";
   DateTime? selectedDate;
 
   Future<void> fetchVentas(String nombres,String fecha, String sucursal) async {
     try {
+
+
       final response = await http.post(Uri.parse("$url_base/venta.listar.php"), body: {
         "nombres":nombres,"fecha":fecha, "sucursal":sucursal
       });
@@ -36,28 +39,42 @@ class _SalesListScreenState extends State<SalesListScreen> {
           );
           return;
         }else{
-         /* setState((){
+          setState((){
             sales.clear();
-          });*/
+          });
 
 
           for(int i = 0; i <sellJson.length; i++){
+            List<Map<String, dynamic>> productos = [];
+            print("Detalle crudo: ${sellJson[i]["detalle"]}");
+
+            if (sellJson[i]["detalle"] != null && sellJson[i]["detalle"] is List) {
+              try {
+                productos = (sellJson[i]["detalle"] as List)
+                    .where((item) => item is Map)
+                    .map((item) => Map<String, dynamic>.from(item))
+                    .toList();
+              } catch (e) {
+                print("Error al convertir detalle: $e");
+              }
+            }
             setState(() {
               sales.add( {
                 "nro_venta": sellJson[i]["nro_venta"],
                 "total": double.parse(sellJson[i]["total"]),
                 "cliente": sellJson[i]["cliente"],
+                "estado": sellJson[i]["estado"],
                 "tipoDocumento": sellJson[i]["tipo"],
                 "numero": sellJson[i]["nro_documento"],
-                "productos": [
-                  {"nombre": "Crema para pies", "cantidad": 2, "precio":120},
-                  {"nombre": "Lima eléctrica", "cantidad": 1, "precio":30}
-                ],
+                "productos": productos,
                 "metodoPago": sellJson[i]["metodoPago"]
               });
+
             });
           }
+          print(sales[0]["productos"].toString());
         }
+
 
       } else {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -72,6 +89,112 @@ class _SalesListScreenState extends State<SalesListScreen> {
       );
       // return [];
     }
+  }
+
+  Future<void> setNotaCreditoVentas(String nro_venta) async {
+
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (BuildContext context) {
+        return const AlertDialog(
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              CircularProgressIndicator(),
+              SizedBox(height: 16),
+              Text('Creando nota de credito...'),
+            ],
+          ),
+        );
+      },
+    );
+
+
+    try {
+
+      final response = await http.post(Uri.parse("$url_base/nota.credito.agregar.php"), body: {
+        "nro_venta":nro_venta
+      });
+
+      if (response.statusCode == 200) {
+        // var rptaJson = json.decode(response.body);
+
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('nota de credito creada correctamente.')),
+        );
+
+      } else {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Error al crear nota de credito.')),
+        );
+      }
+    } catch (e) {
+      print('Error: $e');
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Error: $e')),
+
+      );
+      // return [];
+    }
+    Navigator.pop(context);
+
+  }
+
+  Future<void> anularVentas(String nro_venta, String tipo, String documento) async {
+
+      showDialog(
+        context: context,
+        barrierDismissible: false,
+        builder: (BuildContext context) {
+          return const AlertDialog(
+            content: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                CircularProgressIndicator(),
+                SizedBox(height: 16),
+                Text('Anulando venta...'),
+              ],
+            ),
+          );
+        },
+      );
+
+
+    try {
+
+      final response = await http.post(Uri.parse("$url_base/anular.venta.php"), body: {
+        "codigo":nro_venta, "tipo":tipo
+      });
+
+      if (response.statusCode == 200) {
+        // var rptaJson = json.decode(response.body);
+        if(documento != "NP"){
+          await setNotaCreditoVentas(nro_venta);
+        }
+
+        DateTime actual = DateTime.now();
+        await fetchVentas("","${actual.year}-${actual.month}-${actual.day}",idsucursal);
+
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Venta anulada correctamente.')),
+        );
+
+      } else {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Error al anular venta.')),
+        );
+      }
+    } catch (e) {
+      print('Error: $e');
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Error: $e')),
+
+      );
+      // return [];
+    }
+      Navigator.pop(context);
+
   }
 
   Future<void> fetchImpresionPDF(String nro_venta) async {
@@ -100,8 +223,42 @@ class _SalesListScreenState extends State<SalesListScreen> {
     }
   }
 
+  Future<void> fetchImpresionNotaPDF(String nro_venta) async {
+    try {
+      final response = await http.post(Uri.parse("$url_base/nota.credito.listar.impresion.php"), body: {
+        "nro_venta":nro_venta
+      });
+
+      if (response.statusCode == 200) {
+        _launchURLNota(nro_venta);
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Correcto')),
+        );
+      } else {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Error al obtener ventas.')),
+        );
+        // return [];
+      }
+    } catch (e) {
+      Navigator.of(context).pop();
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Error: $e')),
+      );
+      // return [];
+    }
+  }
+
   Future<void> _launchURL(String nroVenta) async {
     final Uri url = Uri.parse("http://vital.vlinesys.com/app/controlador/${nroVenta}venta.pdf");
+
+    if (!await launchUrl(url, mode: LaunchMode.externalApplication)) {
+      throw Exception('No se pudo abrir la URL: $url');
+    }
+  }
+
+  Future<void> _launchURLNota(String nroVenta) async {
+    final Uri url = Uri.parse("http://vital.vlinesys.com/app/controlador/${nroVenta}-nc.pdf");
 
     if (!await launchUrl(url, mode: LaunchMode.externalApplication)) {
       throw Exception('No se pudo abrir la URL: $url');
@@ -115,7 +272,7 @@ class _SalesListScreenState extends State<SalesListScreen> {
 
     WidgetsBinding.instance.addPostFrameCallback((_){
       DateTime actual = DateTime.now();
-      fetchVentas("","${actual.year}-${actual.month}-${actual.day}","3");
+      fetchVentas("","${actual.year}-${actual.month}-${actual.day}",idsucursal);
     });
   }
   @override
@@ -181,6 +338,7 @@ class _SalesListScreenState extends State<SalesListScreen> {
               itemBuilder: (context, index) {
                 var sale = filteredSales[index];
                 return Card(
+                  color: sale["estado"] == "A" ? Colors.red[200] :  Colors.blueGrey[100],
                   margin: EdgeInsets.all(10),
                   child: ListTile(
                     title: Text("Total: S/ ${sale["total"].toStringAsFixed(2)}"),
@@ -189,9 +347,14 @@ class _SalesListScreenState extends State<SalesListScreen> {
                       mainAxisSize: MainAxisSize.min,
                       children: [
                         IconButton(
-                          icon: Icon(Icons.cancel, color: Colors.red),
-                          onPressed: () {
-                            // Acción para anular la venta
+                          icon: Icon(sale["estado"] == "A" ? Icons.minimize: Icons.cancel, color: Colors.red),
+                          onPressed: () async{
+                            if(sale["estado"] == "A"){
+                              await fetchImpresionNotaPDF(sale["nro_venta"]);
+                            }else{
+                              await anularVentas(sale["nro_venta"], "A", sale["tipoDocumento"]);
+                            }
+
                           },
                         ),
                         IconButton(
@@ -214,7 +377,7 @@ class _SalesListScreenState extends State<SalesListScreen> {
                               Text("Método de Pago: ${sale["metodoPago"]}"),
                               SizedBox(height: 10),
                               Text("Productos:"),
-                              ...sale["productos"].map<Widget>((p) => Text("- ${p["nombre"]} - cant.:${p["cantidad"]} - prec.:${p["precio"]}"))
+                              ...sale["productos"].map<Widget>((p) => Text("- ${p["producto"]} - cant.:${p["cantidad"]} - prec.:${p["precio"]}"))
                             ],
                           ),
                           actions: [

@@ -122,6 +122,7 @@ class _LoginPageState extends State<LoginPage> with SingleTickerProviderStateMix
     if (datos!.isNotEmpty) { // Validamos si se encontró el usuario
       setState(() {
         idusuario_capturado = datos[0]["codigo"].toString();
+        idsucursal = datos[0]["codigo_sucursal"].toString();
       });
 
       _login();

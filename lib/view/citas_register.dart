@@ -104,7 +104,7 @@ class _RegisterAppointmentScreenState extends State<RegisterAppointmentScreen> {
     );
     try {
       final response = await http.post(Uri.parse("$url_base/citas.agregar.php"), body: {
-        "idcliente":idcliente, "idtrabajador":idtrabajador, "idproducto": idproducto, "fecha":fecha, "hora":hora, "idusuario": idusuario
+        "idcliente":idcliente, "idtrabajador":idtrabajador, "idproducto": idproducto, "fecha":fecha, "hora":hora, "idusuario": idusuario, "idsucursal": idsucursal
       });
 
       if (response.statusCode == 200) {
@@ -133,7 +133,7 @@ class _RegisterAppointmentScreenState extends State<RegisterAppointmentScreen> {
 
     try {
       final response = await http.post(Uri.parse("$url_base/citas.ocupadas.php"), body: {
-        "fecha":fecha
+        "fecha":fecha, "idsucursal":idsucursal
       });
 
       if (response.statusCode == 200) {

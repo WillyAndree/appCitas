@@ -137,7 +137,7 @@ class _AppointmentListScreenState extends State<AppointmentListScreen> {
     DateTime now = DateTime.now();
     try {
       final response = await http.post(Uri.parse("$url_base/citas.listar.php"),body:{
-        "dia":dia, "mes":mes, "anio":anio
+        "dia":dia, "mes":mes, "anio":anio, "idsucursal":idsucursal
       });
 
       if (response.statusCode == 200) {
@@ -175,7 +175,7 @@ class _AppointmentListScreenState extends State<AppointmentListScreen> {
               );
 
 
-              appointments.add(Appointment(citasJson[i]["idcita"],citasJson[i]["cliente"], citasJson[i]["fecha"]+" "+citasJson[i]["hora"], citasJson[i]["servicio"], citasJson[i]["trabajador"], citasJson[i]["codigo_producto"], citasJson[i]["precio"], citasJson[i]["estado"]));
+              appointments.add(Appointment(citasJson[i]["idcita"],citasJson[i]["cliente"], citasJson[i]["fecha"]+" "+citasJson[i]["hora"], citasJson[i]["servicio"], citasJson[i]["trabajador"], citasJson[i]["codigo_producto"], citasJson[i]["precio"], citasJson[i]["estado"], citasJson[i]["antecedentes"]??"", citasJson[i]["tratamientos"]??"", citasJson[i]["diagnosticos"]??""));
 
             });
           }
@@ -323,6 +323,7 @@ class _AppointmentCardState extends State<AppointmentCard>{
   String cliente_seleccionado ="";
   String cod_tipodoc = "5";
   String cod_tipopago = "1";
+  String totalventa = "0";
 
   void _mostrarDialogoOpciones(String codigo) async {
     final resultado = await showDialog<String>(
@@ -368,18 +369,21 @@ class _AppointmentCardState extends State<AppointmentCard>{
                   DropdownButtonFormField<String>(
                     value: selectedPaymentMethod,
                     onChanged: (value) {
-                      selectedPaymentMethod = value!;
-                      if(value == "Efectivo"){
-                        cod_tipopago = "1";
-                      }else if(value == "Tarjeta"){
-                        cod_tipopago = "2";
-                      }else if(value == "YAPE"){
-                        cod_tipopago = "3";
-                      }else if(value == "Transferencia"){
-                        cod_tipopago = "4";
-                      }else if(value == "PLIM"){
-                        cod_tipopago = "5";
-                      }
+                      setState(() {
+                        selectedPaymentMethod = value!;
+                        if(value == "Efectivo"){
+                          cod_tipopago = "1";
+                        }else if(value == "Tarjeta"){
+                          cod_tipopago = "2";
+                        }else if(value == "Yape"){
+                          cod_tipopago = "3";
+                        }else if(value == "Transferencia"){
+                          cod_tipopago = "4";
+                        }else if(value == "Plin"){
+                          cod_tipopago = "5";
+                        }
+                      });
+
                     },
                     items: ["Efectivo", "Tarjeta", "Yape", "Plin", "Transferencia"].map((method) {
                       return DropdownMenuItem(
@@ -393,6 +397,12 @@ class _AppointmentCardState extends State<AppointmentCard>{
                     controller: amountController,
                     keyboardType: TextInputType.number,
                     decoration: InputDecoration(labelText: "Precio"),
+                    onChanged: (val){
+                      setState(() {
+                        totalventa = val;
+                      });
+
+                    },
                   ),
                   DropdownButtonFormField<String>(
                     value: selectedDocMethod,
@@ -438,7 +448,7 @@ class _AppointmentCardState extends State<AppointmentCard>{
                 ),
                 ElevatedButton(
                   onPressed: () async{
-                    await registerVentas(cod_tipopago, widget.appointment.precio, cod_tipodoc, widget.appointment.codproducto,widget.appointment.precio, widget.appointment.codigo );
+                    await registerVentas(cod_tipopago, totalventa, cod_tipodoc, widget.appointment.codproducto,widget.appointment.precio, widget.appointment.codigo );
 
                     Navigator.pop(context,"true");
                   },
@@ -556,21 +566,21 @@ class _AppointmentCardState extends State<AppointmentCard>{
     try {
 
       final response = await http.post(Uri.parse("$url_base/venta.agregar.php"), body: {
-        "txtfecha":DateFormat('yyyy-MM-dd').format(now), "txtserie":"001","txtdocumento":"1", "txtsucursal": "3", "txtusuario":idusuario_capturado,
+        "txtfecha":DateFormat('yyyy-MM-dd').format(now), "txtserie":"001","txtdocumento":"1", "txtsucursal": idsucursal, "txtusuario":idusuario_capturado,
         "cbotipodoc":codtipodoc, "cbotipoventa":"Contado", "txtcodigocliente":codigo_cliente, "txtdni":dni_seleccionado, "txtnombres":cliente_seleccionado, "txtdireccion":"-", "txtletras":"-",
         "cbotventa": "E","codtipopago":codtipopago,"product": codigo_producto,
         "medida": "UND",
-        "sucursal": "3",
+        "sucursal": idsucursal,
         "cantidad": "1",
-        "precio": precio,
-        "subtotal": precio,
+        "precio": total,
+        "subtotal": total,
         "ganancia": "0",
         "detalle": ""
       });
 
       if (response.statusCode == 200) {
         var rptaJson = json.decode(response.body);
-        await atenderVentas(rptaJson["datos"], codtipodoc,"3",codigo_cliente,cliente_seleccionado, "-",dni_seleccionado, codtipopago, DateFormat('yyyy-MM-dd').format(now), total);
+        await atenderVentas(rptaJson["datos"], codtipodoc,idsucursal,codigo_cliente,cliente_seleccionado, "-",dni_seleccionado, codtipopago, DateFormat('yyyy-MM-dd').format(now), total);
         await cancelarVentas(codigo_reserva, "R");
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(content: Text('Venta registrada correctamente.')),
@@ -740,9 +750,10 @@ class _AppointmentCardState extends State<AppointmentCard>{
                         child:
                     ElevatedButton(
                       onPressed: () {
+                        Navigator.pop(context);
                         Navigator.push(
                           context,
-                          MaterialPageRoute(builder: (context) => HistoriaClinicaScreen(idcita: widget.appointment.codigo,)),
+                          MaterialPageRoute(builder: (context) => HistoriaClinicaScreen(idcita: widget.appointment.codigo,tratamientos: widget.appointment.tratamientos, antecedentes: widget.appointment.antecedentes,diagnostico: widget.appointment.diagnosticos,)),
                         );
 
                       },
