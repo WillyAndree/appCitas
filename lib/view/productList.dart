@@ -62,6 +62,7 @@ class _ProductListScreenState extends State<ProductListScreen> {
                 "nombres":productsJson[i]["nombre"],
                 "stock":productsJson[i]["stock"],
                 "precio":productsJson[i]["precio"],
+                "tipo":productsJson[i]["tipo"],
                 "estado":productsJson[i]["estado"]
               });
             });
@@ -129,67 +130,73 @@ class _ProductListScreenState extends State<ProductListScreen> {
     Navigator.pop(context);
   }
 
-  void _mostrarDialog(String codigo,String tipo,String descripcion, String precio) async {
+  void _mostrarDialog(String codigo,String tipo,String descripcion, String precio, String tipo_producto) async {
     TextEditingController nombreController = TextEditingController();
     TextEditingController precioController = TextEditingController();
     nombreController.text = descripcion;
     precioController.text = precio;
-    String tipoSeleccionado = "Producto";
+    String tipoSeleccionado =  tipo_producto == "P" ? "Producto" : "Servicio";
 
     final resultado = await showDialog<Map<String, dynamic>>(
       context: context,
       builder: (context) => AlertDialog(
         title: Text('${tipo} Producto o Servicio'),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            TextField(
-              controller: nombreController,
-              decoration: InputDecoration(labelText: 'Nombre o Descripción'),
-            ),
-            SizedBox(height: 10),
-            TextField(
-              controller: precioController,
-              keyboardType: TextInputType.numberWithOptions(decimal: true),
-              decoration: InputDecoration(labelText: 'Precio'),
-            ),
-            SizedBox(height: 10),
-            DropdownButton<String>(
-              value: tipoSeleccionado,
-              items: ['Producto', 'Servicio'].map((tipo) {
-                return DropdownMenuItem(
-                  value: tipo,
-                  child: Text(tipo),
-                );
-              }).toList(),
-              onChanged: (valor) {
-                setState(() {
-                  tipoSeleccionado = valor!;
-                });
-              },
-            ),
-          ],
+        content: StatefulBuilder(
+          builder: (BuildContext context, StateSetter setState) {
+            return Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                TextField(
+                  controller: nombreController,
+                  decoration: InputDecoration(labelText: 'Nombre o Descripción'),
+                ),
+                SizedBox(height: 10),
+                TextField(
+                  controller: precioController,
+                  keyboardType: TextInputType.numberWithOptions(decimal: true),
+                  decoration: InputDecoration(labelText: 'Precio'),
+                ),
+                SizedBox(height: 10),
+                DropdownButton<String>(
+                  value: tipoSeleccionado,
+                  items: ['Producto', 'Servicio'].map((tipo) {
+                    return DropdownMenuItem(
+                      value: tipo,
+                      child: Text(tipo),
+                    );
+                  }).toList(),
+                  onChanged: (valor) {
+                    setState(() {
+                      tipoSeleccionado = valor!;
+                    });
+                  },
+                ),
+              ],
+            );
+          },
         ),
         actions: [
           TextButton(
-            onPressed: () => Navigator.of(context).pop(), // Cancelar
+            onPressed: () => Navigator.of(context).pop(),
             child: Text('Cancelar'),
           ),
           ElevatedButton(
-            onPressed: () async{
-              /*final resultado = {
-                'nombre': nombreController.text,
-                'precio': precioController.text,
-                'tipo': tipoSeleccionado
-              };*/
-              await registerProductos( codigo,nombreController.text, precioController.text,tipoSeleccionado == "Servicio" ? "S": "P", tipo);
+            onPressed: () async {
+              await registerProductos(
+                codigo,
+                nombreController.text,
+                precioController.text,
+                tipoSeleccionado == "Servicio" ? "S" : "P",
+                tipo,
+              );
               Navigator.of(context).pop();
             },
-            child:  Text('$tipo'),
+            child: Text('$tipo'),
           ),
         ],
       ),
     );
+
 
     if (resultado != null) {
       print("Datos recibidos: $resultado");
@@ -232,7 +239,7 @@ class _ProductListScreenState extends State<ProductListScreen> {
       floatingActionButton: FloatingActionButton(
         backgroundColor: Colors.blueAccent,
         onPressed: () {
-          _mostrarDialog("","Agregar", "", "");
+          _mostrarDialog("","Agregar", "", "", "");
         },
         child: Icon(Icons.add, color: Colors.white,),
       ),
@@ -422,7 +429,7 @@ class _ProductListScreenState extends State<ProductListScreen> {
                           alignment: Alignment.centerRight,
                           child:IconButton(
                               onPressed: () async{
-                                _mostrarDialog(product["codigo"],"Editar",product["nombres"],product["precio"]);
+                                _mostrarDialog(product["codigo"],"Editar",product["nombres"],product["precio"],product["tipo"]);
                               }, icon: Icon(Icons.edit, color: Colors.blue,)) ),
                         Container(
                             alignment: Alignment.centerRight,

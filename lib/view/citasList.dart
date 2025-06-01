@@ -310,7 +310,6 @@ class _AppointmentListScreenState extends State<AppointmentListScreen> {
 class AppointmentCard extends StatefulWidget {
   final Appointment appointment;
 
-
   AppointmentCard({required this.appointment});
 
   _AppointmentCardState createState() => _AppointmentCardState();
@@ -349,7 +348,9 @@ class _AppointmentCardState extends State<AppointmentCard>{
       // Aquí puedes manejar la lógica según la opción seleccionada
       if (resultado == 'cancelar') {
         await cancelarVentas(codigo, "C");
+
         ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Reserva cancelada.')));
+        Navigator.pop(context);
       } else if (resultado == 'pagar') {
         //Navigator.pop(context);
         showDialog(

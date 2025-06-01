@@ -39,9 +39,23 @@ dependencies:
   flip_card: ^0.7.0
   dropdown_search: ^5.0.6
   fl_chart: ^0.65.0
+  shared_preferences: ^2.0.17
   http: ^0.13.5
+  firebase_messaging: ^14.5.0
+  permission_handler: ^10.2.0
+  provider: ^6.0.0
+  firebase_analytics: ^10.10.7
+  flutter_local_notifications: ^12.0.4
   flutter_downloader: ^1.7.0
+  flutter_launcher_icons: ^0.13.1
   url_launcher: ^6.1.9
+
+
+flutter_launcher_icons:
+  android: true
+  ios: false
+  image_path: "assets/images/icono.png"
+
 
 dev_dependencies:
   flutter_test:

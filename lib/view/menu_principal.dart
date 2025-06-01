@@ -1,6 +1,7 @@
 import 'dart:convert';
 
 import 'package:flutter/material.dart';
+import 'package:permission_handler/permission_handler.dart';
 import 'package:prycitas/constants.dart';
 import 'package:prycitas/view/cajaList.dart';
 import 'package:prycitas/view/citasList.dart';
@@ -9,6 +10,9 @@ import 'package:prycitas/view/loginpage.dart';
 import 'package:prycitas/view/productList.dart';
 import 'package:prycitas/view/ventasList.dart';
 import 'package:fl_chart/fl_chart.dart';
+import 'package:prycitas/model/utils/location_notification_services.dart';
+import 'package:firebase_messaging/firebase_messaging.dart';
+import 'package:prycitas/view/notifications/notifications_page.dart' as noti;
 import 'package:http/http.dart' as http;
 
 class MainScreen extends StatefulWidget {
@@ -19,6 +23,8 @@ class MainScreen extends StatefulWidget {
 class _MainScreenState extends State<MainScreen> {
 
   List sales = [];
+  static String? token;
+  String? token_movil;
   List clients = [];
   List products = [];
   @override
@@ -26,12 +32,82 @@ class _MainScreenState extends State<MainScreen> {
     // TODO: implement initState
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_){
+      solicitarPermisos();
+      LocalNotificationService.initialize(context);
+      mostrarNotificacion();
       DateTime actual = DateTime.now();
      fetchVentas();
      fetchClientes(actual.month);
       fetchProductos(actual.month);
     });
   }
+
+  void solicitarPermisos() async {
+    try {
+        var status = await Permission.notification.status;
+        if (!status.isGranted) {
+          status = await Permission.notification.request();
+        }
+        if (status.isGranted) {
+          await FirebaseMessaging.instance.requestPermission(
+            alert: true,
+            badge: true,
+            provisional: false,
+            sound: true,
+          );
+
+          token = await FirebaseMessaging.instance.getToken();
+          if (token != null) {
+            token_movil = token!;
+            print("TOKEN: $token");
+          } else {
+            print("No se pudo obtener el token.");
+          }
+        } else {
+          print("No se otorgaron los permisos necesarios.");
+        }
+    } catch (e) {
+      print("Error al solicitar permisos o obtener el token: $e");
+    }
+  }
+
+  Future<void>mostrarNotificacion() async{
+
+    FirebaseMessaging.onMessageOpenedApp.listen((message) {
+      print("NOTIFICACION 2 : "+message.notification!.title!);
+      noti.NotificationService().addNotification(noti.Notification(
+        id: message.senderId.toString(),
+        title: message.notification!.title!,
+        body: message.notification!.body!,
+        data: message.data["id"],
+        cliente: message.data["cliente"],
+        trabajador: message.data["trabajador"],
+        timestamp: DateTime.now(),
+        hora: message.data["hora"]??"",
+      ));
+      LocalNotificationService().showNotification(title: message.notification!.title.toString(), body: message.notification!.body.toString(), payload: message.data["route"],);
+
+
+    });
+
+    FirebaseMessaging.onMessage.listen((message) async{
+      noti.NotificationService().addNotification(noti.Notification(
+        id: message.senderId.toString(),
+        title: message.notification!.title!,
+        body: message.notification!.body!,
+        data: message.data["id"],
+        cliente: message.data["cliente"],
+        trabajador: message.data["trabajador"],
+        timestamp: DateTime.now(),
+        hora: message.data["hora"]??"",
+      ));
+
+     LocalNotificationService().showNotification(title: message.notification!.title.toString(), body: message.notification!.body.toString(), payload: message.data["route"],);
+
+
+    });
+  }
+
   Future<void> fetchVentas() async {
     try {
 

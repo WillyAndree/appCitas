@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "1068164903271",
+    "project_id": "appcitas-45aca",
+    "storage_bucket": "appcitas-45aca.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:1068164903271:android:0ff4ce513c4fbdb28cffc2",
+        "android_client_info": {
+          "package_name": "com.willysandoval.prycitas"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyD6xSv9g4IY1AXsOG9LGMANxms0zxhUZPY"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
